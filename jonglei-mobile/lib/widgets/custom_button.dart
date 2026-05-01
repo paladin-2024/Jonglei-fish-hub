@@ -4,38 +4,41 @@ class CustomButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool loading;
+  final IconData? icon;
 
   const CustomButton({
     super.key,
     required this.label,
     required this.onPressed,
     this.loading = false,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 52,
       child: ElevatedButton(
         onPressed: loading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1565C0),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
         child: loading
             ? const SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
+                  strokeWidth: 2.5,
                   color: Colors.white,
                 ),
               )
-            : Text(
-                label,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 18),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(label),
+                ],
               ),
       ),
     );

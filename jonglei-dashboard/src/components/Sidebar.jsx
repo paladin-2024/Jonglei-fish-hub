@@ -1,50 +1,76 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import {
+  Fish, LayoutDashboard, Users, ShoppingBag, Truck, BarChart3, LogOut, ChevronRight,
+} from 'lucide-react'
 
 const links = [
-  { to: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { to: '/users', label: 'Users', icon: '👥' },
-  { to: '/orders', label: 'Orders', icon: '📦' },
-  { to: '/shipments', label: 'Shipments', icon: '🚚' },
-  { to: '/analytics', label: 'Analytics', icon: '📈' },
+  { to: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { to: '/users',     label: 'Users',     Icon: Users },
+  { to: '/orders',    label: 'Orders',    Icon: ShoppingBag },
+  { to: '/shipments', label: 'Shipments', Icon: Truck },
+  { to: '/analytics', label: 'Analytics', Icon: BarChart3 },
 ]
 
 export default function Sidebar() {
   const { logout, user } = useAuth()
 
   return (
-    <aside className="w-64 bg-blue-900 text-white flex flex-col min-h-screen">
-      <div className="p-6 border-b border-blue-800">
-        <div className="text-xl font-bold">🐟 Jonglei Fish Hub</div>
-        <div className="text-xs text-blue-300 mt-1">Admin Dashboard</div>
+    <aside className="w-64 flex flex-col min-h-screen" style={{ background: 'linear-gradient(180deg, #002b27 0%, #004d40 100%)' }}>
+
+      {/* Logo */}
+      <div className="p-6 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-teal-400 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Fish size={18} className="text-teal-950" strokeWidth={2.5} />
+          </div>
+          <div>
+            <div className="text-white font-bold text-sm leading-tight">Jonglei Fish Hub</div>
+            <div className="text-teal-400 text-xs">Admin Console</div>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {links.map((link) => (
+      <div className="mx-4 h-px bg-teal-800 mb-4" />
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 space-y-0.5">
+        {links.map(({ to, label, Icon }) => (
           <NavLink
-            key={link.to}
-            to={link.to}
+            key={to}
+            to={to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                 isActive
-                  ? 'bg-blue-700 text-white'
-                  : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+                  ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                  : 'text-teal-100/70 hover:text-teal-100 hover:bg-white/5'
               }`
             }
           >
-            <span>{link.icon}</span>
-            {link.label}
+            {({ isActive }) => (
+              <>
+                <Icon size={17} strokeWidth={isActive ? 2.5 : 2} />
+                <span className="flex-1">{label}</span>
+                {isActive && <ChevronRight size={13} className="text-teal-400" />}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-blue-800">
-        <div className="text-xs text-blue-300 mb-2">{user?.phone_number}</div>
+      {/* Footer */}
+      <div className="mx-4 h-px bg-teal-800 mb-4 mt-4" />
+      <div className="p-4 pt-0">
+        <div className="bg-teal-900/50 rounded-xl p-3 mb-3">
+          <div className="text-teal-300 text-xs font-semibold truncate">{user?.username || 'Admin'}</div>
+          <div className="text-teal-500 text-xs font-mono-data truncate">{user?.phone_number}</div>
+        </div>
         <button
           onClick={logout}
-          className="w-full text-left text-sm text-blue-200 hover:text-white"
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-teal-100/60 hover:text-red-400 hover:bg-red-500/10 transition-all font-medium"
         >
-          → Logout
+          <LogOut size={16} />
+          Sign out
         </button>
       </div>
     </aside>

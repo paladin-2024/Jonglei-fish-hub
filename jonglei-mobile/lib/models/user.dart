@@ -27,7 +27,7 @@ class User {
         roleDisplay: json['role_display'] as String? ?? '',
         location: json['location'] as String? ?? '',
         isVerified: json['is_verified'] as bool? ?? false,
-        rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+        rating: double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
       );
 
   Map<String, dynamic> toJson() => {
