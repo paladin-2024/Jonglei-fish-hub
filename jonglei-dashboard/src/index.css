@@ -1,34 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --teal-950: #002b27;
-    --teal-900: #004d40;
-    --teal-800: #00695c;
-    --teal-700: #00796b;
-    --teal-600: #00897b;
-    --teal-500: #009688;
-    --teal-400: #26a69a;
-    --teal-300: #4db6ac;
-    --teal-200: #80cbc4;
-    --teal-100: #b2dfdb;
-    --teal-50:  #e0f2f1;
+    --primary:        #005440;
+    --primary-light:  #0F6E56;
+    --secondary:      #B45309;
+    --secondary-light:#FFDCBB;
+    --canvas:         #F7F4EF;
+    --surface:        #FFFFFF;
+    --surface-high:   #EEE9E3;
+    --on-surface:     #1B1C1A;
+    --on-muted:       #5C6B67;
+    --on-faint:       #97A8A3;
+    --success:        #1A6B3C;
+    --danger:         #B91C1C;
+    --info:           #1E5C8A;
   }
 
-  * {
-    font-family: 'Outfit', sans-serif;
-  }
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
 
   body {
-    @apply bg-gray-50 text-gray-900;
-    font-feature-settings: 'cv11', 'ss01';
+    background-color: var(--canvas);
+    color: var(--on-surface);
+    font-family: 'Outfit', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  .font-display { font-family: 'DM Serif Display', serif; }
+  .font-data    { font-family: 'JetBrains Mono', monospace; }
 }
 
 @layer utilities {
-  .font-mono-data {
-    font-family: 'DM Mono', monospace;
+  /* Stagger helpers */
+  .stagger-1 { animation-delay: 60ms; }
+  .stagger-2 { animation-delay: 120ms; }
+  .stagger-3 { animation-delay: 180ms; }
+  .stagger-4 { animation-delay: 240ms; }
+  .stagger-5 { animation-delay: 300ms; }
+  .stagger-6 { animation-delay: 360ms; }
+
+  /* Entry animation */
+  .animate-fade-up {
+    animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+
+  /* Shimmer skeleton */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      #EEE9E3 0%,
+      #F7F4EF 45%,
+      #EEE9E3 100%
+    );
+    background-size: 400px 100%;
+    animation: shimmer 1.6s ease infinite;
+  }
+
+  /* Top accent bar — category indicator (NOT side stripe) */
+  .accent-bar-top {
+    position: relative;
+    overflow: hidden;
+  }
+  .accent-bar-top::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 12px 12px 0 0;
+    background: currentColor;
+  }
+
+  /* Slide-in from right panel */
+  .slide-in-right {
+    animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
 }

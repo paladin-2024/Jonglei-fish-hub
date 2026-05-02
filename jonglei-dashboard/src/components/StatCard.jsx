@@ -1,48 +1,65 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
-const COLOR_MAP = {
-  teal:   { icon: 'text-teal-600',   bg: 'bg-teal-50',   border: 'border-teal-100'   },
-  green:  { icon: 'text-green-600',  bg: 'bg-green-50',  border: 'border-green-100'  },
-  amber:  { icon: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-100'  },
-  indigo: { icon: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
+const ACCENT = {
+  teal:   { bar: '#005440', icon: 'text-teal-700',   iconBg: 'bg-teal-50'   },
+  green:  { bar: '#1A6B3C', icon: 'text-green-700',  iconBg: 'bg-green-50'  },
+  amber:  { bar: '#B45309', icon: 'text-amber-700',  iconBg: 'bg-amber-50'  },
+  indigo: { bar: '#1E5C8A', icon: 'text-blue-700',   iconBg: 'bg-blue-50'   },
+  red:    { bar: '#B91C1C', icon: 'text-red-700',    iconBg: 'bg-red-50'    },
 }
 
 export default function StatCard({ title, value, Icon, color = 'teal', trend, note }) {
-  const c = COLOR_MAP[color] ?? COLOR_MAP.teal
+  const c = ACCENT[color] ?? ACCENT.teal
 
   const trendDir = trend
     ? trend.startsWith('+') ? 'up' : trend.startsWith('-') ? 'down' : 'flat'
     : null
 
-  const TrendIcon = trendDir === 'up' ? TrendingUp : trendDir === 'down' ? TrendingDown : Minus
+  const TrendIcon  = trendDir === 'up' ? TrendingUp : trendDir === 'down' ? TrendingDown : Minus
   const trendColor = trendDir === 'up'
-    ? 'text-green-600 bg-green-50'
+    ? 'text-green-700 bg-green-50'
     : trendDir === 'down'
-    ? 'text-red-500 bg-red-50'
-    : 'text-gray-400 bg-gray-50'
+    ? 'text-red-600 bg-red-50'
+    : 'text-stone-400 bg-stone-100'
 
   return (
-    <div className={`bg-white rounded-2xl border ${c.border} p-5 flex flex-col gap-4`}>
-      <div className="flex items-start justify-between">
-        <p className="text-[13px] font-medium text-gray-500 leading-snug">{title}</p>
-        <div className={`w-8 h-8 rounded-xl ${c.bg} flex items-center justify-center flex-shrink-0`}>
-          {Icon && <Icon size={15} className={c.icon} strokeWidth={2} />}
-        </div>
-      </div>
+    <div
+      className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow duration-300 ease-spring overflow-hidden flex flex-col"
+      style={{ '--accent': c.bar }}
+    >
+      {/* 3px top accent bar — category indicator, NOT side stripe */}
+      <div className="h-[3px] w-full flex-shrink-0" style={{ background: c.bar }} />
 
-      <div className="flex items-end justify-between gap-2">
-        <span className="font-mono text-3xl font-semibold text-gray-900 leading-none tracking-tight">
-          {value ?? <span className="text-gray-300 text-2xl">—</span>}
-        </span>
-        {trend && (
-          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg ${trendColor}`}>
-            <TrendIcon size={11} strokeWidth={2.5} />
-            {trend}
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-stone-400 leading-tight">
+            {title}
+          </p>
+          {Icon && (
+            <div className={`w-8 h-8 rounded-lg ${c.iconBg} flex items-center justify-center flex-shrink-0`}>
+              <Icon size={14} className={c.icon} strokeWidth={2} />
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-end justify-between gap-2">
+          <span className="font-mono text-[2rem] font-semibold leading-none tracking-tight text-stone-900">
+            {value ?? <span className="text-stone-300 text-2xl">—</span>}
           </span>
+          {trend && (
+            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg ${trendColor} flex-shrink-0`}>
+              <TrendIcon size={10} strokeWidth={2.5} />
+              {trend}
+            </span>
+          )}
+        </div>
+
+        {note && (
+          <p className="text-[11px] text-stone-400 leading-snug pt-1 border-t border-stone-100">
+            {note}
+          </p>
         )}
       </div>
-
-      {note && <p className="text-xs text-gray-400 leading-snug">{note}</p>}
     </div>
   )
 }

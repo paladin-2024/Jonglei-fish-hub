@@ -14,6 +14,7 @@ import 'screens/auth/role_selection_screen.dart';
 import 'screens/trader/trader_home.dart';
 import 'screens/buyer/buyer_home.dart';
 import 'screens/transporter/transporter_home.dart';
+import 'screens/border_official/border_official_home.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +53,8 @@ class JongleiApp extends StatelessWidget {
         '/role-select':  (_) => const RoleSelectionScreen(),
         '/trader':       (_) => const TraderHomeScreen(),
         '/buyer':        (_) => const BuyerHomeScreen(),
-        '/transporter':  (_) => const TransporterHomeScreen(),
+        '/transporter':       (_) => const TransporterHomeScreen(),
+        '/border-official':   (_) => const BorderOfficialHomeScreen(),
       },
     );
   }
