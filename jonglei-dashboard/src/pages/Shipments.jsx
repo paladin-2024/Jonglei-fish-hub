@@ -1,47 +1,40 @@
-import Sidebar from '../components/Sidebar'
-import { Search, Bell, Truck, MapPin } from 'lucide-react'
+import AppLayout from '../components/AppLayout'
+import { Truck, MapPin } from 'lucide-react'
+
+const CITIES = ['Juba', 'Bor', 'Malakal', 'Renk', 'Wau', 'Torit']
 
 export default function Shipments() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+    <AppLayout title="Shipments" subtitle="Fish transport routes and delivery tracking">
+      <div className="max-w-6xl mx-auto space-y-4">
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-10">
-          <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search shipments..."
-              className="pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl w-64 focus:outline-none focus:border-teal-400 transition-colors"
-            />
+        {/* Route preview */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Active corridors</p>
+          <div className="flex flex-wrap gap-2">
+            {CITIES.map(city => (
+              <div
+                key={city}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-[12px] text-gray-600 font-medium"
+              >
+                <MapPin size={11} className="text-teal-500" />
+                {city}
+              </div>
+            ))}
           </div>
-          <button className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
-            <Bell size={18} className="text-gray-500" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-teal-500 rounded-full" />
-          </button>
-        </header>
+        </div>
 
-        <main className="flex-1 p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Shipments</h1>
-            <p className="text-gray-500 text-sm mt-0.5">Fish transport routes and deliveries</p>
+        {/* Empty state */}
+        <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-20 px-8 text-center">
+          <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-5">
+            <Truck size={24} className="text-indigo-500" />
           </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-24">
-            <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4">
-              <Truck size={28} className="text-indigo-400" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-800 mb-1">Shipments coming soon</h2>
-            <p className="text-sm text-gray-400 text-center max-w-xs">
-              Transport routes and delivery tracking will appear here once the transport API is connected.
-            </p>
-            <div className="flex items-center gap-1.5 mt-4 text-xs text-indigo-400 font-medium">
-              <MapPin size={12} /> Juba · Bor · Malakal · Renk
-            </div>
-          </div>
-        </main>
+          <h2 className="text-base font-bold text-gray-800 mb-1.5">No active shipments</h2>
+          <p className="text-[13px] text-gray-400 max-w-xs leading-relaxed">
+            Transport routes and delivery tracking will populate here once transporters log shipments through the mobile app.
+          </p>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   )
 }

@@ -1,44 +1,24 @@
-import Sidebar from '../components/Sidebar'
-import { ShoppingBag, Search, Bell, PackageSearch } from 'lucide-react'
+import AppLayout from '../components/AppLayout'
+import { ShoppingBag, Plus } from 'lucide-react'
 
 export default function Orders() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-10">
-          <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search orders..."
-              className="pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl w-64 focus:outline-none focus:border-teal-400 transition-colors"
-            />
+    <AppLayout title="Orders" subtitle="Fish purchase transactions across the platform">
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-24 px-8 text-center">
+          <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-5">
+            <ShoppingBag size={24} className="text-amber-500" />
           </div>
-          <button className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
-            <Bell size={18} className="text-gray-500" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-teal-500 rounded-full" />
-          </button>
-        </header>
-
-        <main className="flex-1 p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-            <p className="text-gray-500 text-sm mt-0.5">Fish purchase orders across the platform</p>
+          <h2 className="text-base font-bold text-gray-800 mb-1.5">No orders yet</h2>
+          <p className="text-[13px] text-gray-400 max-w-xs leading-relaxed">
+            Orders will appear here once traders post fish listings and buyers place purchases through the platform.
+          </p>
+          <div className="mt-6 flex items-center gap-2 text-[12px] text-gray-400 bg-gray-50 border border-gray-100 px-4 py-2.5 rounded-xl">
+            <Plus size={13} className="text-gray-400" />
+            Connect the listings API to populate this page
           </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-24">
-            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
-              <PackageSearch size={28} className="text-amber-400" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-800 mb-1">Orders coming soon</h2>
-            <p className="text-sm text-gray-400 text-center max-w-xs">
-              The orders module will list all fish purchase transactions once the listings API is wired up.
-            </p>
-          </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   )
 }

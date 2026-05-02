@@ -5,7 +5,8 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Outfit', 'sans-serif'],
-        mono: ['DM Mono', 'monospace'],
+        mono: ['JetBrains Mono', 'monospace'],
+        data: ['JetBrains Mono', 'monospace'],
       },
       colors: {
         teal: {
