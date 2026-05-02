@@ -11,6 +11,26 @@ class TraderShipmentsScreen extends StatefulWidget {
 class _TraderShipmentsScreenState extends State<TraderShipmentsScreen> {
   String _filter = 'ALL';
 
+  void _showTracking(BuildContext context, _Shipment shipment) {
+    final steps = _stepsForStatus(shipment.status);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TrackingSheet(shipment: shipment, completedSteps: steps),
+    );
+  }
+
+  static int _stepsForStatus(String status) {
+    switch (status) {
+      case 'PENDING':    return 0;
+      case 'CONFIRMED':  return 1;
+      case 'IN TRANSIT': return 3;
+      case 'CLEARED':    return 5;
+      default:           return 0;
+    }
+  }
+
   static const _shipments = [
     _Shipment('SHP-0041', 'Nile Perch', '120 KG', 'Bor', 'Juba',
         'IN TRANSIT', 0.6, '14 May 2026', 'Nile Logistics'),
@@ -109,7 +129,10 @@ class _TraderShipmentsScreenState extends State<TraderShipmentsScreen> {
             padding: const EdgeInsets.all(14),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                (_, i) => _ShipmentCard(shipment: _filtered[i]),
+                (_, i) => GestureDetector(
+                  onTap: () => _showTracking(context, _filtered[i]),
+                  child: _ShipmentCard(shipment: _filtered[i]),
+                ),
                 childCount: _filtered.length,
               ),
             ),
@@ -281,4 +304,183 @@ class _InfoChip extends StatelessWidget {
                   AppTextStyles.ui(12, color: AppColors.onSurfaceVariant)),
         ],
       );
+}
+
+// ─── Tracking bottom sheet ────────────────────────────────────────────────────
+
+class _TrackingSheet extends StatelessWidget {
+  final _Shipment shipment;
+  final int completedSteps;
+  const _TrackingSheet(
+      {required this.shipment, required this.completedSteps});
+
+  static const _steps = [
+    _Step('ORDER CONFIRMED',  'Buyer and seller agreement logged',     Icons.check_circle_outline_rounded),
+    _Step('FISH LOADED',      'Cargo weighed and sealed for transport', Icons.inventory_2_outlined),
+    _Step('IN TRANSIT',       'Vehicle en-route to destination',        Icons.local_shipping_outlined),
+    _Step('BORDER CLEARANCE', 'Documents verified at checkpoint',       Icons.badge_outlined),
+    _Step('DELIVERED',        'Goods received and receipt issued',      Icons.task_alt_rounded),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          20, 0, 20, MediaQuery.of(context).padding.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('TRACK SHIPMENT',
+                        style: AppTextStyles.label(10,
+                            color: AppColors.onSurfaceVariant)),
+                    Text(shipment.fish,
+                        style:
+                            AppTextStyles.ui(17, weight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLow,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(shipment.id,
+                    style: AppTextStyles.data(12,
+                        color: AppColors.onSurfaceVariant)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          ...List.generate(_steps.length, (i) {
+            final done = i < completedSteps;
+            final active = i == completedSteps && completedSteps < _steps.length;
+            final last = i == _steps.length - 1;
+            return _StepRow(
+              step: _steps[i],
+              done: done,
+              active: active,
+              showConnector: !last,
+            );
+          }),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _Step {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  const _Step(this.title, this.subtitle, this.icon);
+}
+
+class _StepRow extends StatelessWidget {
+  final _Step step;
+  final bool done;
+  final bool active;
+  final bool showConnector;
+  const _StepRow(
+      {required this.step,
+      required this.done,
+      required this.active,
+      required this.showConnector});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color dotColor = done
+        ? AppColors.success
+        : active
+            ? AppColors.secondary
+            : AppColors.surfaceHigh;
+    final Color lineColor =
+        done ? AppColors.success : AppColors.surfaceHigh;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Dot + connector column
+        SizedBox(
+          width: 32,
+          child: Column(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: done || active
+                      ? dotColor.withValues(alpha: 0.12)
+                      : AppColors.surfaceHigh,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: dotColor,
+                    width: active ? 2 : 1.5,
+                  ),
+                ),
+                child: Icon(
+                  done ? Icons.check_rounded : step.icon,
+                  size: 15,
+                  color: done
+                      ? AppColors.success
+                      : active
+                          ? AppColors.secondary
+                          : AppColors.onSurfaceFaint,
+                ),
+              ),
+              if (showConnector)
+                Container(
+                  width: 2,
+                  height: 28,
+                  color: lineColor,
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 14),
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(step.title,
+                  style: AppTextStyles.label(11,
+                      color: done || active
+                          ? AppColors.onSurface
+                          : AppColors.onSurfaceFaint,
+                      weight: done || active
+                          ? FontWeight.w700
+                          : FontWeight.w500)),
+              const SizedBox(height: 2),
+              Text(step.subtitle,
+                  style: AppTextStyles.ui(11,
+                      color: AppColors.onSurfaceFaint)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
