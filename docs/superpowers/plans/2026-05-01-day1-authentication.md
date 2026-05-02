@@ -2573,3 +2573,71 @@ Then run `python manage.py migrate`.
   └───────────────────┴───────────────┴────────────┘  
   
 shp-0041
+
+
+  ---                                                      
+  SPRINT PLAN — START HERE                               
+                                                           
+  With all of that in scope, here is the full sprint map 
+  from now to launch:                           
+                                                
+  SPRINT 1 (Week 1-2) — THE FOUNDATION          
+  └── A: Backend Marketplace + Transport + Clearance models
+   (Django)                                                
+  └── B: Profile screen redesign (Flutter — fix design
+  system violation)                                        
+  └── C: Sidebar nav + listings route (Dashboard — add   
+  Listings page)                                           
+                                                           
+  SPRINT 2 (Week 2-3) — CORE FLOWS                         
+  └── A: Create Listing multi-step screen (Flutter)        
+  └── B: Order Placement flow (Flutter)                    
+  └── C: JWT refresh + SMS OTP (Backend)                 
+                                                           
+  SPRINT 3 (Week 3-4) — CLOSE THE LOOP                   
+  └── A: Accept Job + Active Job screen (Flutter           
+  transporter)                                           
+  └── B: Clearance Action screen (Flutter border official) 
+  └── C: Notification system — model + FCM + mobile screen
+                                                           
+  SPRINT 4 (Week 4-5) — REAL DATA EVERYWHERE             
+  └── A: Wire all Flutter screens to real API              
+  └── B: Wire all Dashboard pages to real API              
+  └── C: Offline cache + connectivity detection (Flutter)
+                                                           
+  SPRINT 5 (Week 5-6) — TRUST & DELIGHT                  
+  └── A: Rating/Review system (Backend + Flutter UI)       
+  └── B: Dispute Resolution (Backend + Flutter + Dashboard)
+  └── C: WhatsApp integration buttons, photo support,      
+  sparklines                                               
+                                                           
+  SPRINT 6 (Week 6-7) — SCALE & SECURITY                   
+  └── A: Docker + CI/CD + Redis + Celery                 
+  └── B: Production security hardening                     
+  └── C: Price Intelligence + Crowdsourcing                
+                                                           
+  POST-LAUNCH                                              
+  └── Auction system, USSD interface, PWA, payments        
+                                                         
+  Which sprint do you want to start right now?             
+                                                
+  Say "start Sprint 1" and I'll begin writing all three    
+  tracks immediately — the Django models for all three   
+  domain apps, the Flutter profile screen redesign, and the
+   Dashboard listings page — in one session.               
+                                            
+  ---                                                      
+  Sources:                                                 
+  - https://techcabal.com/2025/12/05/7-african-startups-adv
+  ancing-aquaculture-analytics-and-access-to-finance/      
+  - https://medium.com/@kimsalim99/the-role-of-digital-tech
+  nologies-in-supporting-inclusive-trade-in-fish-fish-produ
+  cts-under-the-6d8b6ffda7fb                               
+  - https://www.itene.com/en/news/platform-monitoring-cold-
+  chain-origin-fish/                                       
+  - https://www.seafoodsource.com/features/barcode-driven-p
+  roduct-tracking-leads-the-way-in-enabling-seafood-traceab
+  ility                                                    
+  - https://techcabal.com/2025/10/22/digital-trading-platfo
+  rms-transform-financial-access-in-africa/              
+                                                

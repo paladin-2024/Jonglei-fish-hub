@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import { Search, Bell, X, LayoutDashboard, Users, ShoppingBag, Truck, BarChart3, TrendingUp } from 'lucide-react'
+import { Search, Bell, X, LayoutDashboard, Users, ShoppingBag, Truck, BarChart3, TrendingUp, Tag } from 'lucide-react'
 
 const SEARCH_SHORTCUTS = [
   { label: 'Overview',      to: '/dashboard',     Icon: LayoutDashboard },
   { label: 'Users',         to: '/users',          Icon: Users           },
+  { label: 'Listings',      to: '/listings',       Icon: Tag             },
   { label: 'Orders',        to: '/orders',         Icon: ShoppingBag     },
   { label: 'Shipments',     to: '/shipments',      Icon: Truck           },
   { label: 'Market Prices', to: '/market-prices',  Icon: TrendingUp      },

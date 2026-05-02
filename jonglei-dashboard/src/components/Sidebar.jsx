@@ -2,12 +2,13 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   Fish, LayoutDashboard, Users, ShoppingBag,
-  Truck, BarChart3, TrendingUp, LogOut,
+  Truck, BarChart3, TrendingUp, LogOut, Tag,
 } from 'lucide-react'
 
 const links = [
   { to: '/dashboard',    label: 'Overview',      Icon: LayoutDashboard },
   { to: '/users',        label: 'Users',          Icon: Users           },
+  { to: '/listings',     label: 'Listings',       Icon: Tag             },
   { to: '/orders',       label: 'Orders',         Icon: ShoppingBag     },
   { to: '/shipments',    label: 'Shipments',      Icon: Truck           },
   { to: '/market-prices',label: 'Market Prices',  Icon: TrendingUp      },

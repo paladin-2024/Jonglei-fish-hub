@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../theme/app_theme.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -11,149 +12,191 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return const SizedBox.shrink();
 
     final initials = user.username.isNotEmpty ? user.username[0].toUpperCase() : '?';
-    final stars = (user.rating).clamp(0.0, 5.0);
+    final stars     = user.rating.clamp(0.0, 5.0);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF9),
+      backgroundColor: AppColors.surfaceLow,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
-            pinned: true,
-            automaticallyImplyLeading: false,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF00695C), Color(0xFF26A69A)],
-                  ),
-                ),
-                child: SafeArea(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          // ── Flat header — no gradient (impeccable rule) ──────────────────
+          SliverToBoxAdapter(
+            child: Container(
+              color: AppColors.surface,
+              padding: EdgeInsets.fromLTRB(
+                  20, MediaQuery.of(context).padding.top + 20, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Identity row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 16),
+                      // Avatar — tonal circle, no border
                       Container(
-                        width: 72,
-                        height: 72,
+                        width: 64,
+                        height: 64,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
+                          color: AppColors.primary.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 2),
                         ),
                         child: Center(
-                          child: Text(initials,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                              )),
+                          child: Text(
+                            initials,
+                            style: AppTextStyles.display(26,
+                                color: AppColors.primary),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Text(user.username,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          )),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('MY ACCOUNT',
+                                style: AppTextStyles.label(10,
+                                    color: AppColors.onSurfaceFaint)),
+                            const SizedBox(height: 4),
+                            Text(
+                              user.username.isEmpty ? 'Account' : user.username,
+                              style: AppTextStyles.display(22),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                _RolePill(user.roleDisplay),
+                                if (user.isVerified) ...[
+                                  const SizedBox(width: 8),
+                                  _VerifiedPill(),
+                                ],
+                              ],
+                            ),
+                          ],
                         ),
-                        child: Text(user.roleDisplay,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            )),
                       ),
                     ],
                   ),
-                ),
+
+                  const SizedBox(height: 20),
+
+                  // Stat row — 3 horizontal chips
+                  Row(
+                    children: [
+                      _StatChip(
+                        label: 'TRADES',
+                        value: '${user.totalTransactions}',
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      _StatChip(
+                        label: 'RATING',
+                        value: '${stars.toStringAsFixed(1)} ★',
+                        color: AppColors.secondary,
+                      ),
+                      const SizedBox(width: 10),
+                      _StatChip(
+                        label: 'LANGUAGE',
+                        value: user.preferredLanguage,
+                        color: AppColors.info,
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
 
+          // ── Content ─────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Status row
-                  Row(
-                    children: [
-                      _StatusBadge(
-                        label: user.isVerified ? 'Verified' : 'Unverified',
-                        icon: user.isVerified ? Icons.verified_rounded : Icons.pending_rounded,
-                        color: user.isVerified ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
-                      ),
-                      const SizedBox(width: 8),
-                      _StatusBadge(
-                        label: '★ ${stars.toStringAsFixed(1)} rating',
-                        icon: Icons.star_rounded,
-                        color: const Color(0xFF0F766E),
-                      ),
-                    ],
+                  // Section label
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2, bottom: 10),
+                    child: Text('ACCOUNT DETAILS',
+                        style: AppTextStyles.label(10,
+                            color: AppColors.onSurfaceFaint)),
                   ),
-                  const SizedBox(height: 20),
 
-                  // Info card
+                  // Info rows in a surface card
                   _InfoCard(children: [
-                    _InfoRow(Icons.phone_android_rounded, 'Phone', user.phoneNumber),
-                    const _Divider(),
-                    _InfoRow(Icons.location_on_outlined, 'Location', user.location.isEmpty ? 'Not set' : user.location),
-                    const _Divider(),
+                    _InfoRow(Icons.phone_android_rounded, 'Phone',
+                        user.phoneNumber),
+                    _InfoRow(Icons.location_on_outlined, 'Location',
+                        user.location.isEmpty ? 'Not set' : user.location),
                     _InfoRow(Icons.badge_outlined, 'Role', user.roleDisplay),
                   ]),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // Edit profile
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2, bottom: 10),
+                    child: Text('ACTIONS',
+                        style: AppTextStyles.label(10,
+                            color: AppColors.onSurfaceFaint)),
+                  ),
+
+                  // Edit profile — outlined teal
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: OutlinedButton.icon(
-                      onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Profile editing coming soon'), behavior: SnackBarBehavior.floating),
+                      onPressed: () =>
+                          ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Profile editing coming soon',
+                              style: AppTextStyles.ui(13)),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: AppColors.surface,
+                        ),
                       ),
                       icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text('Edit Profile'),
+                      label: Text('Edit Profile',
+                          style: AppTextStyles.ui(14,
+                              weight: FontWeight.w600)),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF0F766E),
-                        side: const BorderSide(color: Color(0xFF0F766E)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.35)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md)),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
-                  // Sign out
+                  // Sign out — danger surface, no border
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         await context.read<AuthProvider>().logout();
-                        if (context.mounted) Navigator.pushReplacementNamed(context, '/login');
+                        if (context.mounted) {
+                          Navigator.pushReplacementNamed(context, '/login');
+                        }
                       },
                       icon: const Icon(Icons.logout_rounded, size: 16),
-                      label: const Text('Sign Out'),
+                      label: Text('Sign Out',
+                          style: AppTextStyles.ui(14,
+                              weight: FontWeight.w600,
+                              color: AppColors.danger)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFEF2F2),
-                        foregroundColor: const Color(0xFFDC2626),
+                        backgroundColor: AppColors.dangerLight,
+                        foregroundColor: AppColors.danger,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md)),
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -164,30 +207,83 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
+// ── Role pill ──────────────────────────────────────────────────────────────────
+class _RolePill extends StatelessWidget {
   final String label;
-  final IconData icon;
-  final Color color;
-  const _StatusBadge({required this.label, required this.icon, required this.color});
+  const _RolePill(this.label);
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          label.toUpperCase(),
+          style: AppTextStyles.label(10,
+              color: AppColors.primary, weight: FontWeight.w700),
+        ),
+      );
+}
+
+// ── Verified pill ─────────────────────────────────────────────────────────────
+class _VerifiedPill extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.successLight,
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 5),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+            const Icon(Icons.verified_rounded,
+                size: 11, color: AppColors.success),
+            const SizedBox(width: 4),
+            Text('VERIFIED',
+                style: AppTextStyles.label(10,
+                    color: AppColors.success, weight: FontWeight.w700)),
           ],
         ),
       );
 }
 
+// ── Stat chip ─────────────────────────────────────────────────────────────────
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _StatChip(
+      {required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLow,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Column(
+            children: [
+              Text(value,
+                  style: AppTextStyles.data(14,
+                      weight: FontWeight.w700, color: color)),
+              const SizedBox(height: 2),
+              Text(label,
+                  style: AppTextStyles.label(9,
+                      color: AppColors.onSurfaceFaint)),
+            ],
+          ),
+        ),
+      );
+}
+
+// ── Info card — surface bg, no border ─────────────────────────────────────────
 class _InfoCard extends StatelessWidget {
   final List<Widget> children;
   const _InfoCard({required this.children});
@@ -195,9 +291,8 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE8F5F3)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
         ),
         child: Column(children: children),
       );
@@ -210,25 +305,30 @@ class _InfoRow extends StatelessWidget {
   const _InfoRow(this.icon, this.label, this.value);
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF7A9B98)),
-            const SizedBox(width: 12),
-            Text(label,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF7A9B98), fontWeight: FontWeight.w500)),
-            const Spacer(),
-            Text(value,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0D1A19))),
-          ],
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: AppColors.onSurfaceVariant),
+              const SizedBox(width: 12),
+              Text(label,
+                  style: AppTextStyles.ui(13,
+                      color: AppColors.onSurfaceVariant)),
+              const Spacer(),
+              Text(value,
+                  style: AppTextStyles.data(13,
+                      weight: FontWeight.w600)),
+            ],
+          ),
         ),
-      );
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-  @override
-  Widget build(BuildContext context) =>
-      const Divider(height: 1, indent: 46, endIndent: 0, color: Color(0xFFF0F7F6));
+        Container(
+            height: 1,
+            color: AppColors.surfaceLow,
+            margin: const EdgeInsets.only(left: 44)),
+      ],
+    );
+  }
 }
