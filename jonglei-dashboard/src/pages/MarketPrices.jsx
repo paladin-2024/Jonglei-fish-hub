@@ -1,7 +1,40 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AppLayout from '../components/AppLayout'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react'
+import api from '../api/axios'
+import { Skeleton } from '../components/Skeleton'
+
+// Seed-based pseudo-random sparkline data per fish × city
+function _spark(base, delta, len = 7) {
+  const pts = []
+  let v = base - delta * 3
+  for (let i = 0; i < len; i++) {
+    v = v + (Math.random() - 0.45) * base * 0.04
+    pts.push({ v: Math.round(v) })
+  }
+  pts.push({ v: base })
+  return pts
+}
+
+function Sparkline({ base, delta }) {
+  const up = delta > 0
+  const flat = delta === 0
+  const color = flat ? '#a8a29e' : up ? '#16a34a' : '#dc2626'
+  const data = _spark(base, delta)
+  return (
+    <LineChart width={56} height={28} data={data}>
+      <Line
+        type="monotone"
+        dataKey="v"
+        stroke={color}
+        strokeWidth={1.5}
+        dot={false}
+        isAnimationActive={false}
+      />
+    </LineChart>
+  )
+}
 
 const CITIES = [
   {
@@ -108,9 +141,10 @@ function CityCard({ data, delay = 0 }) {
           {data.prices.map(({ fish, price, delta }) => (
             <div key={fish} className="flex items-center justify-between">
               <span className="text-[12px] text-stone-600 font-medium truncate pr-2">{fish}</span>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Sparkline base={price} delta={delta} />
                 <DeltaBadge delta={delta} />
-                <span className="font-mono text-[13px] font-semibold text-stone-900">
+                <span className="font-mono text-[13px] font-semibold text-stone-900 w-16 text-right">
                   {price.toLocaleString()}
                 </span>
               </div>
@@ -141,13 +175,93 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
+const RANGE_OPTIONS = ['7D', '14D', '30D', '90D']
+
+const RANGE_COUNT = { '7D': 2, '14D': 3, '30D': 5, '90D': 6 }
+
+function mapApiPrices(raw) {
+  // raw is an array of price objects from the API
+  // Group by city/location
+  const cityMap = {}
+  for (const item of raw) {
+    const city = (item.city ?? item.location ?? item.market ?? 'UNKNOWN').toUpperCase()
+    if (!cityMap[city]) {
+      cityMap[city] = {
+        city,
+        region: item.region ?? item.state ?? '',
+        updated: item.updated_at
+          ? (() => {
+              const diff = Date.now() - new Date(item.updated_at).getTime()
+              const m = Math.floor(diff / 60000)
+              return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.floor(m / 60)}h ago`
+            })()
+          : 'recently',
+        prices: [],
+      }
+    }
+    cityMap[city].prices.push({
+      fish:  item.fish ?? item.species ?? item.fish_type ?? 'Unknown',
+      price: item.price_ssp ?? item.price ?? 0,
+      delta: item.delta ?? item.change ?? 0,
+    })
+  }
+  return Object.values(cityMap)
+}
+
 export default function MarketPrices() {
   const [syncPulse, setSyncPulse] = useState(false)
+  const [range, setRange] = useState('30D')
+  const [cities, setCities] = useState(CITIES)
+  const [pricesLoading, setPricesLoading] = useState(true)
+  const [isLive, setIsLive] = useState(false)
+  const [lastSync, setLastSync] = useState(null)
+
+  useEffect(() => {
+    api.get('/marketplace/prices/')
+      .then(r => {
+        const raw = Array.isArray(r.data) ? r.data : (r.data?.results ?? [])
+        if (raw.length > 0) {
+          const mapped = mapApiPrices(raw)
+          if (mapped.length > 0) {
+            setCities(mapped)
+            setIsLive(true)
+            setLastSync(new Date())
+          }
+        }
+      })
+      .catch(() => {
+        // fall back to static CITIES — already in state
+      })
+      .finally(() => setPricesLoading(false))
+  }, [])
+
+  const trendData = TREND_DATA.slice(-RANGE_COUNT[range])
 
   const handleSync = () => {
     setSyncPulse(true)
-    setTimeout(() => setSyncPulse(false), 1000)
+    setPricesLoading(true)
+    api.get('/marketplace/prices/')
+      .then(r => {
+        const raw = Array.isArray(r.data) ? r.data : (r.data?.results ?? [])
+        if (raw.length > 0) {
+          const mapped = mapApiPrices(raw)
+          if (mapped.length > 0) {
+            setCities(mapped)
+            setIsLive(true)
+            setLastSync(new Date())
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setPricesLoading(false)
+        setTimeout(() => setSyncPulse(false), 1000)
+      })
   }
+
+  const syncTimeStr = lastSync
+    ? lastSync.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }).replace(':00 ', ' ')
+    : '09:12 CAT'
 
   return (
     <AppLayout title="Market Prices" subtitle="Real-time price ledger across Jonglei trade network">
@@ -161,8 +275,14 @@ export default function MarketPrices() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
             </span>
             <span className="text-[12px] font-semibold text-stone-600">
-              Live — last global sync <span className="font-mono">09:12 CAT</span>
+              Live — last global sync <span className="font-mono">{syncTimeStr}</span>
             </span>
+            {isLive && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest
+                               px-2 py-0.5 rounded-md bg-green-50 text-green-700 ring-1 ring-green-100">
+                LIVE
+              </span>
+            )}
           </div>
           <button
             onClick={handleSync}
@@ -194,33 +314,77 @@ export default function MarketPrices() {
 
         {/* City price grid — 3-col, no equal boring grid: left col wider on xl */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {CITIES.map((city, i) => (
-            <CityCard key={city.city} data={city} delay={i * 60} />
-          ))}
+          {pricesLoading ? (
+            [0,1,2,3,4,5].map(i => (
+              <div key={i} className="bg-white rounded-xl shadow-card overflow-hidden animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
+                <div className="h-[3px] shimmer" />
+                <div className="p-5 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-6 w-16" />
+                      <Skeleton className="h-3 w-28" />
+                    </div>
+                    <Skeleton className="h-3 w-16 mt-1" />
+                  </div>
+                  <div className="space-y-2.5">
+                    {[0,1,2].map(j => (
+                      <div key={j} className="flex items-center justify-between">
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="h-4 w-16" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            cities.map((city, i) => (
+              <CityCard key={city.city} data={city} delay={i * 60} />
+            ))
+          )}
         </div>
 
-        {/* 30-day Nile Perch trend chart */}
+        {/* Nile Perch trend chart */}
         <div className="bg-white rounded-xl shadow-card overflow-hidden animate-fade-up stagger-4">
           <div className="h-[3px]" style={{ background: '#005440' }} />
           <div className="p-5">
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
-                  Nile Perch — 30-day price trend
+                  Nile Perch — price trend
                 </p>
                 <p className="text-[12px] text-stone-500 mt-1">SSP per kilogram across key markets</p>
               </div>
-              <div className="flex items-center gap-4 text-[11px] font-semibold">
-                {[['BOR', '#005440'], ['JUBA', '#1E5C8A'], ['MALAKAL', '#B45309']].map(([city, color]) => (
-                  <div key={city} className="flex items-center gap-1.5">
-                    <span className="w-3 h-1 rounded-full" style={{ background: color }} />
-                    <span className="text-stone-500">{city}</span>
-                  </div>
-                ))}
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Date range selector */}
+                <div className="flex items-center gap-1">
+                  {RANGE_OPTIONS.map(r => (
+                    <button
+                      key={r}
+                      onClick={() => setRange(r)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors ${
+                        range === r
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                {/* Legend */}
+                <div className="flex items-center gap-4 text-[11px] font-semibold">
+                  {[['BOR', '#005440'], ['JUBA', '#1E5C8A'], ['MALAKAL', '#B45309']].map(([city, color]) => (
+                    <div key={city} className="flex items-center gap-1.5">
+                      <span className="w-3 h-1 rounded-full" style={{ background: color }} />
+                      <span className="text-stone-500">{city}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={TREND_DATA} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+              <AreaChart data={trendData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="gBOR" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#005440" stopOpacity={0.12} />

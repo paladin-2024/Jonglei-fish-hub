@@ -3,8 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../shared/fish_encyclopedia_screen.dart';
 import '../shared/market_map_screen.dart';
+import '../shared/notification_screen.dart';
 import '../shared/profile_screen.dart';
+import 'available_jobs_screen.dart';
 
 class TransporterHomeScreen extends StatefulWidget {
   const TransporterHomeScreen({super.key});
@@ -21,7 +24,7 @@ class _TransporterHomeScreenState extends State<TransporterHomeScreen> {
     final tabs = [
       const _TransporterDashboard(),
       const MarketMapScreen(showRoutes: true),
-      const _TransporterJobs(),
+      const AvailableJobsScreen(),
       const ProfileScreen(),
     ];
 
@@ -54,15 +57,74 @@ class _TransporterHomeScreenState extends State<TransporterHomeScreen> {
 }
 
 // ─── Dashboard tab ────────────────────────────────────────────────────────────
-class _TransporterDashboard extends StatelessWidget {
+class _TransporterDashboard extends StatefulWidget {
   const _TransporterDashboard();
 
-  static const _routes = [
-    _Route('Juba', 'Bor', '200 km', 'SSP 5,000', 'AVAILABLE'),
-    _Route('Bor', 'Malakal', '320 km', 'SSP 8,000', 'AVAILABLE'),
-    _Route('Malakal', 'Renk', '240 km', 'SSP 6,000', 'AVAILABLE'),
-    _Route('Bor', 'Pibor', '180 km', 'SSP 4,500', 'SCHEDULED'),
-  ];
+  @override
+  State<_TransporterDashboard> createState() => _TransporterDashboardState();
+}
+
+class _TransporterDashboardState extends State<_TransporterDashboard> {
+  int _activeJobs = 0;
+  int _completedJobs = 0;
+  bool _statsLoading = true;
+
+  List<_Route> _routes = const [];
+  bool _routesLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStats();
+    _fetchRoutes();
+  }
+
+  Future<void> _fetchStats() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final data =
+          await api.get('/dashboard/transporter-stats/') as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+          _activeJobs = (data['active_jobs'] as num?)?.toInt() ?? 0;
+          _completedJobs = (data['completed_jobs'] as num?)?.toInt() ?? 0;
+          _statsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _statsLoading = false);
+    }
+  }
+
+  Future<void> _fetchRoutes() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final raw = await api.get('/transport/jobs/?status=OPEN');
+      final list = raw is List ? raw : (raw as Map<String, dynamic>)['results'] as List? ?? [];
+      final routes = list.map((j) {
+        final map = j as Map<String, dynamic>;
+        final amount = map['payment_amount'];
+        final pay = amount != null ? 'SSP $amount' : 'SSP —';
+        final distRaw = map['distance_km'];
+        final dist = distRaw != null ? '${distRaw}km' : '—';
+        return _Route(
+          map['origin_location']?.toString() ?? '—',
+          map['destination_location']?.toString() ?? '—',
+          dist,
+          pay,
+          map['status']?.toString() ?? 'OPEN',
+        );
+      }).toList();
+      if (mounted) {
+        setState(() {
+          _routes = routes;
+          _routesLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _routesLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +178,11 @@ class _TransporterDashboard extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.notifications_outlined),
                     color: AppColors.onSurfaceVariant,
-                    onPressed: () {},
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const NotificationScreen()),
+                    ),
                   ),
                 ],
               ),
@@ -131,7 +197,7 @@ class _TransporterDashboard extends StatelessWidget {
                 children: [
                   LedgerStatCard(
                     label: 'Active Jobs',
-                    value: '0',
+                    value: _statsLoading ? '…' : '$_activeJobs',
                     accentColor: AppColors.primary,
                     icon: Icons.route_rounded,
                     wide: true,
@@ -142,7 +208,7 @@ class _TransporterDashboard extends StatelessWidget {
                       Expanded(
                         child: LedgerStatCard(
                           label: 'Completed',
-                          value: '0',
+                          value: _statsLoading ? '…' : '$_completedJobs',
                           accentColor: AppColors.success,
                           icon: Icons.check_circle_outline_rounded,
                         ),
@@ -183,7 +249,74 @@ class _TransporterDashboard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  ..._routes.map((r) => _RouteTile(route: r)),
+                  if (_routesLoading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else if (_routes.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Text(
+                          'No routes available',
+                          style: AppTextStyles.ui(13,
+                              color: AppColors.onSurfaceVariant),
+                        ),
+                      ),
+                    )
+                  else
+                    ..._routes.map((r) => _RouteTile(route: r)),
+
+                  const SizedBox(height: 14),
+
+                  // Encyclopedia quick-link
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const FishEncyclopediaScreen()),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 13),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.menu_book_rounded,
+                                size: 18, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Fish Encyclopedia',
+                                    style: AppTextStyles.ui(14,
+                                        weight: FontWeight.w700)),
+                                Text('Know what you\'re transporting',
+                                    style: AppTextStyles.ui(12,
+                                        color: AppColors.onSurfaceVariant)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded,
+                              size: 18, color: AppColors.onSurfaceFaint),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -292,7 +425,7 @@ class _RouteTile extends StatelessWidget {
   }
 }
 
-// ─── Jobs tab ─────────────────────────────────────────────────────────────────
+// Dead code removed: _TransporterJobs replaced by AvailableJobsScreen
 class _TransporterJobs extends StatefulWidget {
   const _TransporterJobs();
 

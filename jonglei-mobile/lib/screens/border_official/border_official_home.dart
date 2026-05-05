@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
@@ -22,6 +23,7 @@ class _BorderOfficialHomeScreenState extends State<BorderOfficialHomeScreen> {
   Widget build(BuildContext context) {
     final tabs = [
       const _BorderOfficialDashboard(),
+      const _ClearanceQueueTab(),
       const _ScanTab(),
       const ProfileScreen(),
     ];
@@ -36,6 +38,11 @@ class _BorderOfficialHomeScreenState extends State<BorderOfficialHomeScreen> {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home_rounded),
             label: 'HOME',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.list_alt_outlined),
+            selectedIcon: Icon(Icons.list_alt_rounded),
+            label: 'QUEUE',
           ),
           NavigationDestination(
             icon: Icon(Icons.qr_code_scanner_outlined),
@@ -54,14 +61,57 @@ class _BorderOfficialHomeScreenState extends State<BorderOfficialHomeScreen> {
 }
 
 // ─── Dashboard tab ────────────────────────────────────────────────────────────
-class _BorderOfficialDashboard extends StatelessWidget {
+class _BorderOfficialDashboard extends StatefulWidget {
   const _BorderOfficialDashboard();
 
-  static const _logs = [
-    _ClearanceLogData('SHP-0041', 'Nile Perch • 120kg', 'Bor → Juba', 'CLEARED'),
-    _ClearanceLogData('SHP-0040', 'Tilapia • 45kg', 'Panyagoor → Bor', 'PENDING'),
-    _ClearanceLogData('SHP-0039', 'Catfish • 200kg', 'Twic East → Juba', 'FLAGGED'),
-  ];
+  @override
+  State<_BorderOfficialDashboard> createState() =>
+      _BorderOfficialDashboardState();
+}
+
+class _BorderOfficialDashboardState extends State<_BorderOfficialDashboard> {
+  int _pending = 0;
+  int _clearedToday = 0;
+  int _flagged = 0;
+  bool _loading = true;
+  List<_ClearanceLogData> _logs = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStats();
+  }
+
+  Future<void> _fetchStats() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final data =
+          await api.get('/dashboard/border-stats/') as Map<String, dynamic>;
+      if (mounted) {
+        final rawRecent = data['recent'] as List<dynamic>? ?? [];
+        final logs = rawRecent.map((j) {
+          final m = j as Map<String, dynamic>;
+          return _ClearanceLogData(
+            m['shipment']?.toString() ?? m['id']?.toString() ?? '—',
+            m['cargo_description']?.toString() ??
+                m['notes']?.toString() ??
+                'Shipment',
+            m['checkpoint']?.toString() ?? '—',
+            m['status']?.toString().toUpperCase() ?? 'PENDING',
+          );
+        }).toList();
+        setState(() {
+          _pending = (data['pending_clearances'] as num?)?.toInt() ?? 0;
+          _clearedToday = (data['cleared_today'] as num?)?.toInt() ?? 0;
+          _flagged = (data['flagged'] as num?)?.toInt() ?? 0;
+          _logs = logs;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,9 +206,9 @@ class _BorderOfficialDashboard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Full-width primary stat
-                  const LedgerStatCard(
+                  LedgerStatCard(
                     label: 'Pending Clearances',
-                    value: '12',
+                    value: _loading ? '…' : '$_pending',
                     accentColor: AppColors.secondary,
                     icon: Icons.pending_actions_outlined,
                     wide: true,
@@ -166,21 +216,21 @@ class _BorderOfficialDashboard extends StatelessWidget {
                   const SizedBox(height: 10),
 
                   // Two-column row
-                  const Row(
+                  Row(
                     children: [
                       Expanded(
                         child: LedgerStatCard(
                           label: 'Cleared Today',
-                          value: '08',
+                          value: _loading ? '…' : '$_clearedToday',
                           accentColor: AppColors.success,
                           icon: Icons.check_circle_outline_rounded,
                         ),
                       ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: LedgerStatCard(
                           label: 'Flagged',
-                          value: '02',
+                          value: _loading ? '…' : '$_flagged',
                           accentColor: AppColors.danger,
                           icon: Icons.flag_outlined,
                         ),
@@ -198,18 +248,29 @@ class _BorderOfficialDashboard extends StatelessWidget {
                   const SizedBox(height: 10),
 
                   // Clearance log list
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.card),
+                  if (!_loading && _logs.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Text(
+                        'No recent activity',
+                        style: AppTextStyles.ui(13,
+                            color: AppColors.onSurfaceFaint),
+                      ),
+                    )
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                      ),
+                      child: Column(
+                        children: _logs.asMap().entries.map((e) {
+                          final isLast = e.key == _logs.length - 1;
+                          return _ClearanceLogTile(
+                              log: e.value, isLast: isLast);
+                        }).toList(),
+                      ),
                     ),
-                    child: Column(
-                      children: _logs.asMap().entries.map((e) {
-                        final isLast = e.key == _logs.length - 1;
-                        return _ClearanceLogTile(log: e.value, isLast: isLast);
-                      }).toList(),
-                    ),
-                  ),
 
                   const SizedBox(height: 16),
                 ],
@@ -318,6 +379,465 @@ class _ClearanceLogTile extends StatelessWidget {
   }
 }
 
+// ─── Clearance Queue tab ──────────────────────────────────────────────────────
+class _Clearance {
+  final String id;
+  final String shipmentId;
+  final String description;
+  final String route;
+  final String status;
+  final String timestamp;
+
+  const _Clearance({
+    required this.id,
+    required this.shipmentId,
+    required this.description,
+    required this.route,
+    required this.status,
+    required this.timestamp,
+  });
+
+  factory _Clearance.fromJson(Map<String, dynamic> j) {
+    return _Clearance(
+      id: j['id']?.toString() ?? '—',
+      shipmentId: j['shipment_id']?.toString() ??
+          j['shipment']?.toString() ??
+          j['id']?.toString() ??
+          '—',
+      description: j['cargo_description']?.toString() ??
+          j['description']?.toString() ??
+          '—',
+      route:
+          '${j['origin'] ?? j['from'] ?? '—'} → ${j['destination'] ?? j['to'] ?? '—'}',
+      status: (j['status'] ?? 'PENDING').toString().toUpperCase(),
+      timestamp: j['created_at']?.toString() ??
+          j['timestamp']?.toString() ??
+          '',
+    );
+  }
+}
+
+const _sampleClearances = [
+  _Clearance(
+    id: 'CLR-0041',
+    shipmentId: 'SHP-0041',
+    description: 'Nile Perch • 120 kg',
+    route: 'Bor → Juba',
+    status: 'PENDING',
+    timestamp: '2026-05-03 09:14',
+  ),
+  _Clearance(
+    id: 'CLR-0040',
+    shipmentId: 'SHP-0040',
+    description: 'Tilapia • 45 kg',
+    route: 'Panyagoor → Bor',
+    status: 'PENDING',
+    timestamp: '2026-05-03 08:52',
+  ),
+  _Clearance(
+    id: 'CLR-0039',
+    shipmentId: 'SHP-0039',
+    description: 'Catfish • 200 kg',
+    route: 'Twic East → Juba',
+    status: 'PENDING',
+    timestamp: '2026-05-03 08:30',
+  ),
+];
+
+class _ClearanceQueueTab extends StatefulWidget {
+  const _ClearanceQueueTab();
+
+  @override
+  State<_ClearanceQueueTab> createState() => _ClearanceQueueTabState();
+}
+
+class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
+  List<_Clearance> _clearances = _sampleClearances;
+  bool _loading = true;
+  String? _actingId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+    try {
+      final api = context.read<AuthProvider>().api;
+      final raw = await api.get('/clearance/?status=PENDING') as List;
+      if (mounted) {
+        setState(() {
+          _clearances = raw
+              .map((j) => _Clearance.fromJson(j as Map<String, dynamic>))
+              .toList();
+        });
+      }
+    } catch (_) {
+      // Use sample data already set
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _act(String clearanceId, String action) async {
+    setState(() => _actingId = clearanceId);
+    try {
+      final api = context.read<AuthProvider>().api;
+      await api.post('/clearance/$clearanceId/$action/', {});
+      if (mounted) {
+        final label = action == 'scan_clear' ? 'Cleared' : 'Held';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Shipment $label successfully'),
+            backgroundColor:
+                action == 'scan_clear' ? AppColors.success : AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _load();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Action failed: $e'),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _actingId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surfaceLow,
+      body: CustomScrollView(
+        slivers: [
+          // ── Header ──────────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Container(
+              color: AppColors.surface,
+              padding: EdgeInsets.fromLTRB(
+                  18, MediaQuery.of(context).padding.top + 16, 18, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Clearance Queue',
+                            style:
+                                AppTextStyles.ui(18, weight: FontWeight.w800)),
+                        Text('PENDING SHIPMENTS',
+                            style: AppTextStyles.label(10,
+                                color: AppColors.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.warningLight,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('${_clearances.length} PENDING',
+                        style: AppTextStyles.label(10,
+                            color: AppColors.warning,
+                            weight: FontWeight.w800)),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded,
+                        size: 20, color: AppColors.onSurfaceVariant),
+                    onPressed: _load,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Content ──────────────────────────────────────────────────────
+          if (_loading)
+            SliverPadding(
+              padding: const EdgeInsets.all(14),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => _ClearanceSkeleton(),
+                  childCount: 3,
+                ),
+              ),
+            )
+          else if (_clearances.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  children: [
+                    const Icon(Icons.inbox_rounded,
+                        size: 48, color: AppColors.onSurfaceFaint),
+                    const SizedBox(height: 12),
+                    Text('Queue is clear',
+                        style: AppTextStyles.ui(15,
+                            color: AppColors.onSurfaceVariant)),
+                    const SizedBox(height: 6),
+                    Text('No pending clearances at this time',
+                        style: AppTextStyles.ui(12,
+                            color: AppColors.onSurfaceFaint)),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(14),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => _ClearanceCard(
+                    clearance: _clearances[i],
+                    isActing: _actingId == _clearances[i].id,
+                    onClear: () => _act(_clearances[i].id, 'scan_clear'),
+                    onHold: () => _act(_clearances[i].id, 'hold'),
+                  ),
+                  childCount: _clearances.length,
+                ),
+              ),
+            ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClearanceCard extends StatelessWidget {
+  final _Clearance clearance;
+  final bool isActing;
+  final VoidCallback onClear;
+  final VoidCallback onHold;
+
+  const _ClearanceCard({
+    required this.clearance,
+    required this.isActing,
+    required this.onClear,
+    required this.onHold,
+  });
+
+  Color get _accentColor {
+    switch (clearance.status) {
+      case 'PENDING':
+        return AppColors.secondary;
+      case 'CLEARED':
+        return AppColors.success;
+      case 'HELD':
+      case 'FLAGGED':
+        return AppColors.danger;
+      default:
+        return AppColors.onSurfaceVariant;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        children: [
+          Container(
+            height: 3,
+            decoration: BoxDecoration(
+              color: _accentColor,
+              borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppRadius.card)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(clearance.shipmentId,
+                              style: AppTextStyles.data(13,
+                                  weight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(clearance.description,
+                              style: AppTextStyles.ui(12,
+                                  color: AppColors.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                    StatusBadge.fromString(clearance.status),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.swap_horiz_rounded,
+                        size: 13, color: AppColors.onSurfaceFaint),
+                    const SizedBox(width: 4),
+                    Text(clearance.route,
+                        style: AppTextStyles.ui(11,
+                            color: AppColors.onSurfaceFaint)),
+                    const Spacer(),
+                    if (clearance.timestamp.isNotEmpty)
+                      Text(clearance.timestamp,
+                          style: AppTextStyles.data(10,
+                              color: AppColors.onSurfaceFaint)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 38,
+                        child: ElevatedButton(
+                          onPressed: isActing ? null : onClear,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            disabledBackgroundColor: AppColors.surfaceHighest,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
+                          ),
+                          child: isActing
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : Text('CLEAR',
+                                  style: AppTextStyles.label(12,
+                                      color: Colors.white,
+                                      weight: FontWeight.w800)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 38,
+                        child: ElevatedButton(
+                          onPressed: isActing ? null : onHold,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.danger,
+                            disabledBackgroundColor: AppColors.surfaceHighest,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
+                          ),
+                          child: isActing
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : Text('HOLD',
+                                  style: AppTextStyles.label(12,
+                                      color: Colors.white,
+                                      weight: FontWeight.w800)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClearanceSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        children: [
+          Container(
+            height: 3,
+            decoration: const BoxDecoration(
+              color: AppColors.surfaceHigh,
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                            height: 14, width: 100, color: AppColors.surfaceHigh),
+                        const SizedBox(height: 4),
+                        Container(
+                            height: 11, width: 140, color: AppColors.surfaceHighest),
+                      ],
+                    ),
+                    const Spacer(),
+                    Container(
+                        height: 20, width: 60, color: AppColors.surfaceHigh),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                    height: 11, width: 180, color: AppColors.surfaceHighest),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                        child: Container(
+                            height: 38,
+                            decoration: BoxDecoration(
+                                color: AppColors.surfaceHigh,
+                                borderRadius: BorderRadius.circular(8)))),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: Container(
+                            height: 38,
+                            decoration: BoxDecoration(
+                                color: AppColors.surfaceHigh,
+                                borderRadius: BorderRadius.circular(8)))),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Scan tab ─────────────────────────────────────────────────────────────────
 class _ScanTab extends StatefulWidget {
   const _ScanTab();
@@ -330,6 +850,9 @@ class _ScanTabState extends State<_ScanTab>
     with SingleTickerProviderStateMixin {
   late final AnimationController _lineCtrl;
   late final Animation<double> _lineAnim;
+  late final MobileScannerController _scannerCtrl;
+  bool _cameraActive = false;
+  bool _scanning = false;
 
   @override
   void initState() {
@@ -341,12 +864,210 @@ class _ScanTabState extends State<_ScanTab>
     _lineAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _lineCtrl, curve: Curves.easeInOut),
     );
+    _scannerCtrl = MobileScannerController();
   }
 
   @override
   void dispose() {
     _lineCtrl.dispose();
+    _scannerCtrl.dispose();
     super.dispose();
+  }
+
+  void _toggleCamera() {
+    setState(() => _cameraActive = !_cameraActive);
+  }
+
+  void _onDetect(BarcodeCapture capture) async {
+    if (_scanning) return;
+    final barcode = capture.barcodes.firstOrNull;
+    if (barcode == null) return;
+    final raw = barcode.rawValue ?? '';
+    // Parse JONGLEI:CLEARANCE:{uuid}
+    String? clearanceId;
+    if (raw.startsWith('JONGLEI:CLEARANCE:')) {
+      clearanceId = raw.substring('JONGLEI:CLEARANCE:'.length).trim();
+    } else {
+      clearanceId = raw.trim();
+    }
+    if (clearanceId.isEmpty) return;
+    setState(() => _scanning = true);
+    await _handleClearanceId(clearanceId);
+    setState(() => _scanning = false);
+  }
+
+  Future<void> _handleClearanceId(String clearanceId) async {
+    // Fetch clearance details
+    Map<String, dynamic>? details;
+    try {
+      final api = context.read<AuthProvider>().api;
+      details = await api.get('/clearance/$clearanceId/') as Map<String, dynamic>;
+    } catch (_) {
+      // No details available — proceed with ID only
+    }
+    if (!mounted) return;
+    _showClearanceSheet(clearanceId, details);
+  }
+
+  void _showClearanceSheet(
+      String clearanceId, Map<String, dynamic>? details) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceHighest,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Clearance Confirmation',
+                style: AppTextStyles.ui(17, weight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text('Review details before clearing',
+                style: AppTextStyles.ui(12, color: AppColors.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            // Details card
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLow,
+                borderRadius: BorderRadius.circular(AppRadius.card),
+              ),
+              child: Column(
+                children: [
+                  _SheetRow(
+                    label: 'Clearance ID',
+                    value: clearanceId,
+                  ),
+                  if (details != null) ...[
+                    const SizedBox(height: 8),
+                    _SheetRow(
+                      label: 'Shipment',
+                      value: details['shipment_id']?.toString() ??
+                          details['shipment']?.toString() ??
+                          '—',
+                    ),
+                    const SizedBox(height: 8),
+                    _SheetRow(
+                      label: 'Cargo',
+                      value: details['cargo_description']?.toString() ??
+                          details['description']?.toString() ??
+                          '—',
+                    ),
+                    const SizedBox(height: 8),
+                    _SheetRow(
+                      label: 'Route',
+                      value:
+                          '${details['origin'] ?? details['from'] ?? '—'} → ${details['destination'] ?? details['to'] ?? '—'}',
+                    ),
+                    const SizedBox(height: 8),
+                    _SheetRow(
+                      label: 'Status',
+                      value: (details['status'] ?? 'PENDING')
+                          .toString()
+                          .toUpperCase(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.onSurfaceVariant,
+                        side: const BorderSide(
+                            color: AppColors.surfaceHighest, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md)),
+                      ),
+                      child: Text('CANCEL',
+                          style: AppTextStyles.ui(13,
+                              weight: FontWeight.w700,
+                              color: AppColors.onSurfaceVariant)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        Navigator.of(ctx).pop();
+                        try {
+                          final api = context.read<AuthProvider>().api;
+                          await api.post(
+                              '/clearance/$clearanceId/scan_clear/', {});
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Shipment cleared successfully!'),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text('Clearance failed: $e'),
+                                backgroundColor: AppColors.danger,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md)),
+                      ),
+                      icon: const Icon(Icons.check_circle_rounded,
+                          size: 18, color: Colors.white),
+                      label: Text('CONFIRM CLEAR',
+                          style: AppTextStyles.ui(13,
+                              weight: FontWeight.w800,
+                              color: Colors.white)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showManualEntry() {
@@ -360,7 +1081,7 @@ class _ScanTabState extends State<_ScanTab>
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         title: Text(
-          'Enter Shipment ID',
+          'Enter Clearance ID',
           style: AppTextStyles.ui(16, weight: FontWeight.w700),
         ),
         content: Form(
@@ -371,7 +1092,7 @@ class _ScanTabState extends State<_ScanTab>
             textCapitalization: TextCapitalization.characters,
             style: AppTextStyles.data(14),
             decoration: const InputDecoration(
-              hintText: 'e.g. SHP-0041',
+              hintText: 'e.g. CLR-0041',
               prefixIcon: Icon(
                 Icons.tag_rounded,
                 color: AppColors.onSurfaceFaint,
@@ -379,7 +1100,7 @@ class _ScanTabState extends State<_ScanTab>
               ),
             ),
             validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Enter a shipment ID' : null,
+                (v == null || v.trim().isEmpty) ? 'Enter a clearance ID' : null,
           ),
         ),
         actions: [
@@ -397,13 +1118,9 @@ class _ScanTabState extends State<_ScanTab>
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
+                final id = controller.text.trim();
                 Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Looking up ${controller.text.trim()}...'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                _handleClearanceId(id);
               }
             },
             style: ElevatedButton.styleFrom(
@@ -415,7 +1132,7 @@ class _ScanTabState extends State<_ScanTab>
               ),
             ),
             child: Text(
-              'CONFIRM',
+              'LOOKUP',
               style: AppTextStyles.ui(
                 13,
                 weight: FontWeight.w800,
@@ -436,202 +1153,251 @@ class _ScanTabState extends State<_ScanTab>
     return Scaffold(
       backgroundColor: Colors.black87,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  Text(
-                    'SCAN QR CODE',
-                    style: AppTextStyles.label(
-                      12,
-                      color: Colors.white70,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.flash_on_outlined,
-                        color: Colors.white70),
-                    onPressed: () {},
-                  ),
-                ],
+            // Camera background when active
+            if (_cameraActive)
+              Positioned.fill(
+                child: MobileScanner(
+                  controller: _scannerCtrl,
+                  onDetect: _onDetect,
+                ),
               ),
-            ),
 
-            const Spacer(),
-
-            // ── QR viewfinder ─────────────────────────────────────────────────
-            Stack(
-              alignment: Alignment.center,
+            Column(
               children: [
-                // Dimming overlay with transparent center cutout
-                SizedBox(
-                  width: viewfinderSize + 80,
-                  height: viewfinderSize + 80,
-                  child: CustomPaint(
-                    painter: _DimOverlayPainter(viewfinderSize),
+                // Top bar
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'SCAN QR CODE',
+                        style: AppTextStyles.label(
+                          12,
+                          color: Colors.white70,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.flash_on_outlined,
+                            color: Colors.white70),
+                        onPressed: () => _scannerCtrl.toggleTorch(),
+                      ),
+                    ],
                   ),
                 ),
 
-                // White-border square
-                Container(
-                  width: viewfinderSize,
-                  height: viewfinderSize,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.35),
-                      width: 1,
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
+                const Spacer(),
 
-                // Animated corner brackets
-                SizedBox(
-                  width: viewfinderSize,
-                  height: viewfinderSize,
-                  child: CustomPaint(
-                    painter: _CornerBracketsPainter(
-                      color: AppColors.secondary,
-                    ),
-                  ),
-                ),
+                // ── QR viewfinder ──────────────────────────────────────────────
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Dimming overlay (only when camera NOT active)
+                    if (!_cameraActive)
+                      SizedBox(
+                        width: viewfinderSize + 80,
+                        height: viewfinderSize + 80,
+                        child: CustomPaint(
+                          painter: _DimOverlayPainter(viewfinderSize),
+                        ),
+                      ),
 
-                // Animated scan line
-                AnimatedBuilder(
-                  animation: _lineAnim,
-                  builder: (context, child) {
-                    final topOffset =
-                        _lineAnim.value * (viewfinderSize - 4);
-                    return SizedBox(
+                    // White-border square
+                    Container(
                       width: viewfinderSize,
                       height: viewfinderSize,
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: topOffset,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 2,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.transparent,
-                                    AppColors.secondary
-                                        .withValues(alpha: 0.9),
-                                    Colors.transparent,
-                                  ],
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+
+                    // Animated corner brackets (on top)
+                    SizedBox(
+                      width: viewfinderSize,
+                      height: viewfinderSize,
+                      child: CustomPaint(
+                        painter: _CornerBracketsPainter(
+                          color: AppColors.secondary,
+                        ),
+                      ),
+                    ),
+
+                    // Animated scan line (on top)
+                    AnimatedBuilder(
+                      animation: _lineAnim,
+                      builder: (context, child) {
+                        final topOffset =
+                            _lineAnim.value * (viewfinderSize - 4);
+                        return SizedBox(
+                          width: viewfinderSize,
+                          height: viewfinderSize,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                top: topOffset,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  height: 2,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.transparent,
+                                        AppColors.secondary
+                                            .withValues(alpha: 0.9),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            const Spacer(),
-
-            // ── Labels and buttons ────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 0, 32, 20),
-              child: Column(
-                children: [
-                  Text(
-                    'SCAN SHIPMENT QR',
-                    style: AppTextStyles.ui(
-                      18,
-                      weight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Align code within the frame',
-                    style: AppTextStyles.ui(
-                      13,
-                      color: Colors.white54,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Manual entry button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton(
-                      onPressed: _showManualEntry,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(
-                            color: Colors.white54, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
-                        ),
-                      ),
-                      child: Text(
-                        'ENTER CODE MANUALLY',
-                        style: AppTextStyles.ui(
-                          13,
-                          weight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Scan Now button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content:
-                                Text('Camera scanning — coming soon'),
-                            behavior: SnackBarBehavior.floating,
+                            ],
                           ),
                         );
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                    ),
+
+                    // Scanning indicator overlay
+                    if (_scanning)
+                      Container(
+                        width: viewfinderSize,
+                        height: viewfinderSize,
+                        color: Colors.black38,
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.secondary),
                         ),
                       ),
-                      child: Text(
-                        'SCAN NOW',
+                  ],
+                ),
+
+                const Spacer(),
+
+                // ── Labels and buttons ───────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 20),
+                  child: Column(
+                    children: [
+                      Text(
+                        'SCAN SHIPMENT QR',
                         style: AppTextStyles.ui(
-                          14,
+                          18,
                           weight: FontWeight.w800,
                           color: Colors.white,
                           letterSpacing: 1.2,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _cameraActive
+                            ? 'Point camera at QR code'
+                            : 'Align code within the frame',
+                        style: AppTextStyles.ui(
+                          13,
+                          color: Colors.white54,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Manual entry button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton(
+                          onPressed: _showManualEntry,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(
+                                color: Colors.white54, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md),
+                            ),
+                          ),
+                          child: Text(
+                            'ENTER CODE MANUALLY',
+                            style: AppTextStyles.ui(
+                              13,
+                              weight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Scan Now / Stop button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _toggleCamera,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _cameraActive
+                                ? AppColors.danger
+                                : AppColors.secondary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md),
+                            ),
+                          ),
+                          child: Text(
+                            _cameraActive ? 'STOP SCANNING' : 'SCAN NOW',
+                            style: AppTextStyles.ui(
+                              14,
+                              weight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Helper widget for clearance bottom sheet ─────────────────────────────────
+class _SheetRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _SheetRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 90,
+          child: Text('$label:',
+              style: AppTextStyles.ui(12, color: AppColors.onSurfaceVariant)),
+        ),
+        Expanded(
+          child: Text(value,
+              style: AppTextStyles.data(12, weight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis),
+        ),
+      ],
     );
   }
 }

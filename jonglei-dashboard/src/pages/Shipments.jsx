@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import AppLayout from '../components/AppLayout'
-import { Truck, MapPin, Search, Circle } from 'lucide-react'
+import { Truck, MapPin, Search, Circle, RefreshCw } from 'lucide-react'
+import api from '../api/axios'
+import ShipmentTrackingMap from '../components/ShipmentTrackingMap'
 
 const STATUS_CFG = {
   'IN TRANSIT': { dot: 'bg-blue-500',   pill: 'bg-blue-50 text-blue-800 ring-blue-100'   },
@@ -25,13 +27,58 @@ const STATUSES = ['ALL', 'IN TRANSIT', 'CONFIRMED', 'PENDING', 'CLEARED', 'FLAGG
 
 const fmtSSP = (n) => `SSP ${n.toLocaleString()}`
 
+function normalizeShipment(j) {
+  const order = j.order_detail ?? j.order ?? {}
+  const listing = order.listing_detail ?? order.listing ?? {}
+  return {
+    id:     j.id?.toString().toUpperCase().slice(0, 12) ?? j.id,
+    fish:   listing.species ?? j.cargo ?? '—',
+    origin: j.origin ?? j.pickup_location ?? '—',
+    dest:   j.destination ?? j.delivery_location ?? '—',
+    qty:    Number(j.quantity_kg ?? order.quantity_kg ?? 0),
+    price:  Number(j.total_price ?? order.total_price ?? 0),
+    status: (j.status ?? 'PENDING').replace('_', ' ').toUpperCase(),
+    date:   j.created_at
+      ? new Date(j.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      : j.date ?? '—',
+  }
+}
+
+function SkeletonRow() {
+  return (
+    <tr className="border-b border-stone-50">
+      {[...Array(7)].map((_, i) => (
+        <td key={i} className="px-5 py-4">
+          <div className="h-3 bg-stone-100 rounded animate-pulse" style={{ width: `${50 + (i % 3) * 20}%` }} />
+        </td>
+      ))}
+    </tr>
+  )
+}
+
 export default function Shipments() {
+  const [shipments, setShipments]     = useState(SAMPLE)
+  const [loading, setLoading]         = useState(true)
+  const [isLive, setIsLive]           = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
-  const [search, setSearch] = useState('')
+  const [search, setSearch]           = useState('')
+
+  useEffect(() => {
+    api.get('/transport/shipments/')
+      .then(r => {
+        const raw = Array.isArray(r.data) ? r.data : (r.data?.results ?? [])
+        if (raw.length > 0) {
+          setShipments(raw.map(normalizeShipment))
+          setIsLive(true)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return SAMPLE.filter(s => {
+    return shipments.filter(s => {
       const matchStatus = statusFilter === 'ALL' || s.status === statusFilter
       const matchSearch = !q ||
         s.id.toLowerCase().includes(q) ||
@@ -40,7 +87,7 @@ export default function Shipments() {
         s.dest.toLowerCase().includes(q)
       return matchStatus && matchSearch
     })
-  }, [statusFilter, search])
+  }, [shipments, statusFilter, search])
 
   return (
     <AppLayout title="Shipments" subtitle="Fish transport routes and delivery tracking">
@@ -98,13 +145,37 @@ export default function Shipments() {
               <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
                 Shipment ledger
               </p>
+              {isLive && (
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-lg ml-2">
+                  <RefreshCw size={10} strokeWidth={2.5} />
+                  LIVE
+                </div>
+              )}
             </div>
             <span className="font-mono text-[11px] text-stone-400">
               <span className="font-semibold text-stone-700">{filtered.length}</span> records
+              {isLive ? ' · live data' : ' · sample data'}
             </span>
           </div>
 
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-stone-50 bg-stone-50/60">
+                    {['Shipment ID', 'Fish', 'Route', 'Quantity', 'Value', 'Status', 'Date'].map(h => (
+                      <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
+                </tbody>
+              </table>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-stone-300">
               <Truck size={28} className="mb-3" strokeWidth={1.5} />
               <p className="text-[13px] text-stone-400 font-medium">No shipments match your filters</p>
@@ -171,24 +242,28 @@ export default function Shipments() {
           )}
         </div>
 
-        {/* Active corridors */}
+        {/* Live tracking map */}
         <div className="bg-white rounded-xl shadow-card overflow-hidden animate-fade-up stagger-2">
-          <div className="h-[3px]" style={{ background: '#005440' }} />
-          <div className="p-5">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-3">
-              Active corridors
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {['Juba', 'Bor', 'Malakal', 'Renk', 'Wau', 'Torit', 'Fangak', 'Pibor'].map(city => (
-                <div
-                  key={city}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-50 border border-stone-100 rounded-xl text-[12px] text-stone-600 font-medium"
-                >
-                  <MapPin size={10} className="text-teal-500" />
-                  {city}
-                </div>
-              ))}
+          <div className="h-[3px]" style={{ background: '#1E5C8A' }} />
+          <div className="px-5 py-3.5 border-b border-stone-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin size={14} className="text-stone-400" strokeWidth={1.75} />
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
+                Live route tracking
+              </p>
             </div>
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+              </span>
+              <span className="text-[10px] font-mono text-stone-400">
+                {filtered.filter(s => s.status === 'IN TRANSIT').length} in motion
+              </span>
+            </div>
+          </div>
+          <div className="h-[480px]">
+            <ShipmentTrackingMap shipments={filtered} />
           </div>
         </div>
 

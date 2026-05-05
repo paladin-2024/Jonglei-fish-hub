@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/shimmer_box.dart';
 
 class TraderShipmentsScreen extends StatefulWidget {
   const TraderShipmentsScreen({super.key});
@@ -10,28 +13,10 @@ class TraderShipmentsScreen extends StatefulWidget {
 
 class _TraderShipmentsScreenState extends State<TraderShipmentsScreen> {
   String _filter = 'ALL';
+  bool _loading = true;
+  List<_Shipment> _shipments = [];
 
-  void _showTracking(BuildContext context, _Shipment shipment) {
-    final steps = _stepsForStatus(shipment.status);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _TrackingSheet(shipment: shipment, completedSteps: steps),
-    );
-  }
-
-  static int _stepsForStatus(String status) {
-    switch (status) {
-      case 'PENDING':    return 0;
-      case 'CONFIRMED':  return 1;
-      case 'IN TRANSIT': return 3;
-      case 'CLEARED':    return 5;
-      default:           return 0;
-    }
-  }
-
-  static const _shipments = [
+  static const _staticShipments = [
     _Shipment('SHP-0041', 'Nile Perch', '120 KG', 'Bor', 'Juba',
         'IN TRANSIT', 0.6, '14 May 2026', 'Nile Logistics'),
     _Shipment('SHP-0038', 'Tilapia (Fresh)', '45 KG', 'Panyagoor', 'Bor',
@@ -45,6 +30,73 @@ class _TraderShipmentsScreenState extends State<TraderShipmentsScreen> {
   ];
 
   static const _filters = ['ALL', 'PENDING', 'IN TRANSIT', 'CONFIRMED', 'CLEARED'];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchShipments();
+  }
+
+  Future<void> _fetchShipments() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final data = await api.get('/transport/shipments/');
+      final list = data is List ? data : (data['results'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _shipments = _parseShipments(list);
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _shipments = List<_Shipment>.from(_staticShipments);
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  List<_Shipment> _parseShipments(List<dynamic> data) {
+    return data.map((item) {
+      final status = ((item['status'] as String? ?? 'PENDING')).toUpperCase();
+      return _Shipment(
+        item['id']?.toString() ?? '',
+        item['fish_species'] as String? ?? item['fish'] as String? ?? '',
+        item['quantity'] as String? ?? '',
+        item['origin'] as String? ?? '',
+        item['destination'] as String? ?? '',
+        status,
+        (item['progress'] as num? ?? 0.0).toDouble(),
+        item['date'] as String? ?? item['departure_date'] as String? ?? '',
+        item['party'] as String? ?? item['transporter'] as String? ?? '',
+      );
+    }).toList();
+  }
+
+  void _showTracking(BuildContext context, _Shipment shipment) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TrackingSheet(
+        shipment: shipment,
+        completedSteps: _stepsForStatus(shipment.status),
+        api: context.read<AuthProvider>().api,
+      ),
+    );
+  }
+
+  static int _stepsForStatus(String status) {
+    switch (status) {
+      case 'PENDING':    return 0;
+      case 'CONFIRMED':  return 1;
+      case 'IN TRANSIT': return 3;
+      case 'CLEARED':    return 5;
+      default:           return 0;
+    }
+  }
 
   List<_Shipment> get _filtered =>
       _filter == 'ALL' ? _shipments : _shipments.where((s) => s.status == _filter).toList();
@@ -125,20 +177,31 @@ class _TraderShipmentsScreenState extends State<TraderShipmentsScreen> {
             ),
           ),
 
-          SliverPadding(
-            padding: const EdgeInsets.all(14),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (_, i) => GestureDetector(
-                  onTap: () => _showTracking(context, _filtered[i]),
-                  child: _ShipmentCard(shipment: _filtered[i]),
+          if (_loading)
+            SliverPadding(
+              padding: const EdgeInsets.all(14),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, _) => const ShimmerCard(),
+                  childCount: 4,
                 ),
-                childCount: _filtered.length,
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(14),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => GestureDetector(
+                    onTap: () => _showTracking(context, _filtered[i]),
+                    child: _ShipmentCard(shipment: _filtered[i]),
+                  ),
+                  childCount: _filtered.length,
+                ),
               ),
             ),
-          ),
 
-          if (_filtered.isEmpty)
+          if (!_loading && _filtered.isEmpty)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(40),
@@ -308,11 +371,23 @@ class _InfoChip extends StatelessWidget {
 
 // ─── Tracking bottom sheet ────────────────────────────────────────────────────
 
-class _TrackingSheet extends StatelessWidget {
+class _TrackingSheet extends StatefulWidget {
   final _Shipment shipment;
   final int completedSteps;
-  const _TrackingSheet(
-      {required this.shipment, required this.completedSteps});
+  final dynamic api;
+  const _TrackingSheet({
+    required this.shipment,
+    required this.completedSteps,
+    required this.api,
+  });
+
+  @override
+  State<_TrackingSheet> createState() => _TrackingSheetState();
+}
+
+class _TrackingSheetState extends State<_TrackingSheet> {
+  List<_EventNote> _events = [];
+  bool _eventsLoading = true;
 
   static const _steps = [
     _Step('ORDER CONFIRMED',  'Buyer and seller agreement logged',     Icons.check_circle_outline_rounded),
@@ -321,6 +396,31 @@ class _TrackingSheet extends StatelessWidget {
     _Step('BORDER CLEARANCE', 'Documents verified at checkpoint',       Icons.badge_outlined),
     _Step('DELIVERED',        'Goods received and receipt issued',      Icons.task_alt_rounded),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEvents();
+  }
+
+  Future<void> _fetchEvents() async {
+    try {
+      final data = await widget.api.get(
+          '/transport/shipments/${widget.shipment.id}/events/');
+      final list = data is List ? data : (data['results'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _events = list.map<_EventNote>((e) => _EventNote(
+            timestamp: e['timestamp'] as String? ?? '',
+            note: e['note'] as String? ?? e['description'] as String? ?? '',
+          )).toList();
+          _eventsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _eventsLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -353,7 +453,7 @@ class _TrackingSheet extends StatelessWidget {
                     Text('TRACK SHIPMENT',
                         style: AppTextStyles.label(10,
                             color: AppColors.onSurfaceVariant)),
-                    Text(shipment.fish,
+                    Text(widget.shipment.fish,
                         style:
                             AppTextStyles.ui(17, weight: FontWeight.w800)),
                   ],
@@ -366,7 +466,7 @@ class _TrackingSheet extends StatelessWidget {
                   color: AppColors.surfaceLow,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(shipment.id,
+                child: Text(widget.shipment.id,
                     style: AppTextStyles.data(12,
                         color: AppColors.onSurfaceVariant)),
               ),
@@ -374,21 +474,41 @@ class _TrackingSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ...List.generate(_steps.length, (i) {
-            final done = i < completedSteps;
-            final active = i == completedSteps && completedSteps < _steps.length;
+            final done = i < widget.completedSteps;
+            final active = i == widget.completedSteps && widget.completedSteps < _steps.length;
             final last = i == _steps.length - 1;
+            // Find matching event note for this step if available
+            final eventNote = (!_eventsLoading && i < _events.length)
+                ? _events[i]
+                : null;
             return _StepRow(
               step: _steps[i],
               done: done,
               active: active,
               showConnector: !last,
+              eventNote: eventNote,
             );
           }),
+          if (_eventsLoading) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ShimmerBox(width: 180, height: 14),
+              ],
+            ),
+          ],
           const SizedBox(height: 8),
         ],
       ),
     );
   }
+}
+
+class _EventNote {
+  final String timestamp;
+  final String note;
+  const _EventNote({required this.timestamp, required this.note});
 }
 
 class _Step {
@@ -403,11 +523,14 @@ class _StepRow extends StatelessWidget {
   final bool done;
   final bool active;
   final bool showConnector;
-  const _StepRow(
-      {required this.step,
-      required this.done,
-      required this.active,
-      required this.showConnector});
+  final _EventNote? eventNote;
+  const _StepRow({
+    required this.step,
+    required this.done,
+    required this.active,
+    required this.showConnector,
+    this.eventNote,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -474,9 +597,19 @@ class _StepRow extends StatelessWidget {
                           ? FontWeight.w700
                           : FontWeight.w500)),
               const SizedBox(height: 2),
-              Text(step.subtitle,
-                  style: AppTextStyles.ui(11,
-                      color: AppColors.onSurfaceFaint)),
+              Text(
+                eventNote != null && eventNote!.note.isNotEmpty
+                    ? eventNote!.note
+                    : step.subtitle,
+                style: AppTextStyles.ui(11, color: AppColors.onSurfaceFaint),
+              ),
+              if (eventNote != null && eventNote!.timestamp.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  eventNote!.timestamp,
+                  style: AppTextStyles.data(9, color: AppColors.onSurfaceFaint),
+                ),
+              ],
             ],
           ),
         ),

@@ -8,6 +8,8 @@ class AuthService {
 
   AuthService(this._api, this._storage);
 
+  ApiService get api => _api;
+
   Future<User> register({
     required String phoneNumber,
     required String username,

@@ -16,6 +16,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get loading => _loading;
   String? get errorMessage => _errorMessage;
+  ApiService get api => _authService.api;
 
   Future<void> checkAuthStatus() async {
     _currentUser = await _authService.getCurrentUser();
@@ -73,5 +74,14 @@ class AuthProvider extends ChangeNotifier {
     await _authService.logout();
     _currentUser = null;
     notifyListeners();
+  }
+
+  /// Call after a profile/language PATCH so the UI reflects the change immediately.
+  Future<void> refreshCurrentUser() async {
+    try {
+      final data = await _authService.api.get('/auth/profile/') as Map<String, dynamic>;
+      _currentUser = User.fromJson(data);
+      notifyListeners();
+    } catch (_) {}
   }
 }

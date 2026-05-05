@@ -3,22 +3,100 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 
-class ProfileScreen extends StatelessWidget {
+// ─── Language options ─────────────────────────────────────────────────────────
+const _languages = [
+  _Language('EN', 'English'),
+  _Language('AR', 'العربية'),
+  _Language('DIN', 'Thuɔŋjäŋ (Dinka)'),
+];
+
+class _Language {
+  final String code;
+  final String label;
+  const _Language(this.code, this.label);
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _editing = false;
+  late TextEditingController _usernameCtrl;
+  late TextEditingController _locationCtrl;
+  bool _saving = false;
+  String _saveError = '';
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<AuthProvider>().currentUser;
+    _usernameCtrl = TextEditingController(text: user?.username ?? '');
+    _locationCtrl = TextEditingController(text: user?.location ?? '');
+  }
+
+  @override
+  void dispose() {
+    _usernameCtrl.dispose();
+    _locationCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() { _saving = true; _saveError = ''; });
+    try {
+      final auth = context.read<AuthProvider>();
+      await auth.api.patch('/auth/update-profile/', {
+        'username': _usernameCtrl.text.trim(),
+        'location': _locationCtrl.text.trim(),
+      });
+      await auth.refreshCurrentUser();
+      if (mounted) setState(() { _editing = false; _saving = false; });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _saveError = 'Failed to save. Please try again.';
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _setLanguage(String code) async {
+    try {
+      final auth = context.read<AuthProvider>();
+      await auth.api.patch('/auth/update-profile/', {'preferred_language': code});
+      await auth.refreshCurrentUser();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Could not update language',
+              style: AppTextStyles.ui(13, color: AppColors.surface)),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
     if (user == null) return const SizedBox.shrink();
 
-    final initials = user.username.isNotEmpty ? user.username[0].toUpperCase() : '?';
+    final initials  = user.username.isNotEmpty ? user.username[0].toUpperCase() : '?';
     final stars     = user.rating.clamp(0.0, 5.0);
+    final lang      = user.preferredLanguage;
 
     return Scaffold(
       backgroundColor: AppColors.surfaceLow,
       body: CustomScrollView(
         slivers: [
-          // ── Flat header — no gradient (impeccable rule) ──────────────────
+          // ── Header ──────────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
               color: AppColors.surface,
@@ -27,24 +105,18 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Identity row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Avatar — tonal circle, no border
                       Container(
-                        width: 64,
-                        height: 64,
+                        width: 64, height: 64,
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: Text(
-                            initials,
-                            style: AppTextStyles.display(26,
-                                color: AppColors.primary),
-                          ),
+                          child: Text(initials,
+                              style: AppTextStyles.display(26, color: AppColors.primary)),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -53,123 +125,205 @@ class ProfileScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('MY ACCOUNT',
-                                style: AppTextStyles.label(10,
-                                    color: AppColors.onSurfaceFaint)),
+                                style: AppTextStyles.label(10, color: AppColors.onSurfaceFaint)),
                             const SizedBox(height: 4),
-                            Text(
-                              user.username.isEmpty ? 'Account' : user.username,
-                              style: AppTextStyles.display(22),
-                            ),
+                            Text(user.username.isEmpty ? 'Account' : user.username,
+                                style: AppTextStyles.display(22)),
                             const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                _RolePill(user.roleDisplay),
-                                if (user.isVerified) ...[
-                                  const SizedBox(width: 8),
-                                  _VerifiedPill(),
-                                ],
+                            Row(children: [
+                              _RolePill(user.roleDisplay),
+                              if (user.isVerified) ...[
+                                const SizedBox(width: 8),
+                                _VerifiedPill(),
                               ],
-                            ),
+                            ]),
                           ],
                         ),
+                      ),
+                      // Edit toggle
+                      IconButton(
+                        icon: Icon(
+                          _editing ? Icons.close_rounded : Icons.edit_outlined,
+                          size: 20, color: AppColors.onSurfaceVariant),
+                        onPressed: () => setState(() {
+                          _editing = !_editing;
+                          _saveError = '';
+                        }),
                       ),
                     ],
                   ),
 
                   const SizedBox(height: 20),
 
-                  // Stat row — 3 horizontal chips
-                  Row(
-                    children: [
-                      _StatChip(
+                  // Stat chips
+                  Row(children: [
+                    _StatChip(
                         label: 'TRADES',
                         value: '${user.totalTransactions}',
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 10),
-                      _StatChip(
+                        color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    _StatChip(
                         label: 'RATING',
                         value: '${stars.toStringAsFixed(1)} ★',
-                        color: AppColors.secondary,
-                      ),
-                      const SizedBox(width: 10),
-                      _StatChip(
+                        color: AppColors.secondary),
+                    const SizedBox(width: 10),
+                    _StatChip(
                         label: 'LANGUAGE',
-                        value: user.preferredLanguage,
-                        color: AppColors.info,
-                      ),
-                    ],
-                  ),
+                        value: lang,
+                        color: AppColors.info),
+                  ]),
                 ],
               ),
             ),
           ),
 
-          // ── Content ─────────────────────────────────────────────────────
+          // ── Content ─────────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Section label
+
+                  // ── Account details / edit form ─────────────────────────
                   Padding(
                     padding: const EdgeInsets.only(left: 2, bottom: 10),
                     child: Text('ACCOUNT DETAILS',
-                        style: AppTextStyles.label(10,
-                            color: AppColors.onSurfaceFaint)),
+                        style: AppTextStyles.label(10, color: AppColors.onSurfaceFaint)),
                   ),
 
-                  // Info rows in a surface card
-                  _InfoCard(children: [
-                    _InfoRow(Icons.phone_android_rounded, 'Phone',
-                        user.phoneNumber),
-                    _InfoRow(Icons.location_on_outlined, 'Location',
-                        user.location.isEmpty ? 'Not set' : user.location),
-                    _InfoRow(Icons.badge_outlined, 'Role', user.roleDisplay),
-                  ]),
+                  if (!_editing)
+                    _InfoCard(children: [
+                      _InfoRow(Icons.person_outline_rounded, 'Username', user.username),
+                      _InfoRow(Icons.phone_android_rounded, 'Phone', user.phoneNumber),
+                      _InfoRow(Icons.location_on_outlined, 'Location',
+                          user.location.isEmpty ? 'Not set' : user.location),
+                      _InfoRow(Icons.badge_outlined, 'Role', user.roleDisplay),
+                    ])
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _usernameCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Username',
+                              prefixIcon: Icon(Icons.person_outline_rounded, size: 18),
+                            ),
+                            style: AppTextStyles.ui(14),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _locationCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Location',
+                              prefixIcon: Icon(Icons.location_on_outlined, size: 18),
+                            ),
+                            style: AppTextStyles.ui(14),
+                          ),
+                          if (_saveError.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(_saveError,
+                                style: AppTextStyles.ui(12, color: AppColors.danger)),
+                          ],
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _saving ? null : _saveProfile,
+                              child: _saving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          color: Colors.white, strokeWidth: 2))
+                                  : Text('Save Changes',
+                                      style: AppTextStyles.ui(14,
+                                          weight: FontWeight.w700,
+                                          color: Colors.white)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
+                  // ── Language selector ───────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.only(left: 2, bottom: 10),
-                    child: Text('ACTIONS',
-                        style: AppTextStyles.label(10,
-                            color: AppColors.onSurfaceFaint)),
+                    child: Text('LANGUAGE',
+                        style: AppTextStyles.label(10, color: AppColors.onSurfaceFaint)),
                   ),
 
-                  // Edit profile — outlined teal
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: () =>
-                          ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Profile editing coming soon',
-                              style: AppTextStyles.ui(13)),
-                          behavior: SnackBarBehavior.floating,
-                          backgroundColor: AppColors.surface,
-                        ),
-                      ),
-                      icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: Text('Edit Profile',
-                          style: AppTextStyles.ui(14,
-                              weight: FontWeight.w600)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: BorderSide(
-                            color: AppColors.primary.withValues(alpha: 0.35)),
-                        shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md)),
-                      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.card),
+                    ),
+                    child: Column(
+                      children: _languages.asMap().entries.map((e) {
+                        final l = e.value;
+                        final isSelected = lang == l.code;
+                        final isLast = e.key == _languages.length - 1;
+                        return GestureDetector(
+                          onTap: () => _setLanguage(l.code),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              border: isLast
+                                  ? null
+                                  : const Border(
+                                      bottom: BorderSide(
+                                          color: AppColors.surfaceLow, width: 1)),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(l.code,
+                                    style: AppTextStyles.data(13,
+                                        weight: FontWeight.w700,
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : AppColors.onSurfaceVariant)),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(l.label,
+                                      style: AppTextStyles.ui(14,
+                                          color: isSelected
+                                              ? AppColors.primary
+                                              : AppColors.onSurface,
+                                          weight: isSelected
+                                              ? FontWeight.w700
+                                              : FontWeight.w400)),
+                                ),
+                                if (isSelected)
+                                  const Icon(Icons.check_circle_rounded,
+                                      size: 18, color: AppColors.primary),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 24),
 
-                  // Sign out — danger surface, no border
+                  // ── Actions ─────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2, bottom: 10),
+                    child: Text('ACTIONS',
+                        style: AppTextStyles.label(10, color: AppColors.onSurfaceFaint)),
+                  ),
+
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -190,8 +344,7 @@ class ProfileScreen extends StatelessWidget {
                         foregroundColor: AppColors.danger,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md)),
+                            borderRadius: BorderRadius.circular(AppRadius.md)),
                       ),
                     ),
                   ),
@@ -207,33 +360,29 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// ── Role pill ──────────────────────────────────────────────────────────────────
+// ── Reusable sub-widgets ──────────────────────────────────────────────────────
+
 class _RolePill extends StatelessWidget {
   final String label;
   const _RolePill(this.label);
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Text(
-          label.toUpperCase(),
-          style: AppTextStyles.label(10,
-              color: AppColors.primary, weight: FontWeight.w700),
-        ),
+        child: Text(label.toUpperCase(),
+            style: AppTextStyles.label(10,
+                color: AppColors.primary, weight: FontWeight.w700)),
       );
 }
 
-// ── Verified pill ─────────────────────────────────────────────────────────────
 class _VerifiedPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: AppColors.successLight,
           borderRadius: BorderRadius.circular(4),
@@ -241,8 +390,7 @@ class _VerifiedPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.verified_rounded,
-                size: 11, color: AppColors.success),
+            const Icon(Icons.verified_rounded, size: 11, color: AppColors.success),
             const SizedBox(width: 4),
             Text('VERIFIED',
                 style: AppTextStyles.label(10,
@@ -252,13 +400,11 @@ class _VerifiedPill extends StatelessWidget {
       );
 }
 
-// ── Stat chip ─────────────────────────────────────────────────────────────────
 class _StatChip extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _StatChip(
-      {required this.label, required this.value, required this.color});
+  const _StatChip({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) => Expanded(
@@ -271,19 +417,16 @@ class _StatChip extends StatelessWidget {
           child: Column(
             children: [
               Text(value,
-                  style: AppTextStyles.data(14,
-                      weight: FontWeight.w700, color: color)),
+                  style: AppTextStyles.data(14, weight: FontWeight.w700, color: color)),
               const SizedBox(height: 2),
               Text(label,
-                  style: AppTextStyles.label(9,
-                      color: AppColors.onSurfaceFaint)),
+                  style: AppTextStyles.label(9, color: AppColors.onSurfaceFaint)),
             ],
           ),
         ),
       );
 }
 
-// ── Info card — surface bg, no border ─────────────────────────────────────────
 class _InfoCard extends StatelessWidget {
   final List<Widget> children;
   const _InfoCard({required this.children});
@@ -315,19 +458,13 @@ class _InfoRow extends StatelessWidget {
               Icon(icon, size: 17, color: AppColors.onSurfaceVariant),
               const SizedBox(width: 12),
               Text(label,
-                  style: AppTextStyles.ui(13,
-                      color: AppColors.onSurfaceVariant)),
+                  style: AppTextStyles.ui(13, color: AppColors.onSurfaceVariant)),
               const Spacer(),
-              Text(value,
-                  style: AppTextStyles.data(13,
-                      weight: FontWeight.w600)),
+              Text(value, style: AppTextStyles.data(13, weight: FontWeight.w600)),
             ],
           ),
         ),
-        Container(
-            height: 1,
-            color: AppColors.surfaceLow,
-            margin: const EdgeInsets.only(left: 44)),
+        Container(height: 1, color: AppColors.surfaceLow, margin: const EdgeInsets.only(left: 44)),
       ],
     );
   }

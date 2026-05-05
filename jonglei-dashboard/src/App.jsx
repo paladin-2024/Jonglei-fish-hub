@@ -8,6 +8,10 @@ import Shipments from './pages/Shipments'
 import MarketPrices from './pages/MarketPrices'
 import Analytics from './pages/Analytics'
 import Listings from './pages/Listings'
+import Clearance from './pages/Clearance'
+import Notifications from './pages/Notifications'
+import Profile from './pages/Profile'
+import Parameters from './pages/Parameters'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -25,7 +29,11 @@ function AppRoutes() {
       <Route path="/shipments"    element={<ProtectedRoute><Shipments /></ProtectedRoute>} />
       <Route path="/market-prices" element={<ProtectedRoute><MarketPrices /></ProtectedRoute>} />
       <Route path="/analytics"    element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-      <Route path="/listings"     element={<ProtectedRoute><Listings /></ProtectedRoute>} />
+      <Route path="/listings"      element={<ProtectedRoute><Listings /></ProtectedRoute>} />
+      <Route path="/clearance"     element={<ProtectedRoute><Clearance /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+      <Route path="/profile"       element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/parameters"    element={<ProtectedRoute><Parameters /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
     </Routes>
   )

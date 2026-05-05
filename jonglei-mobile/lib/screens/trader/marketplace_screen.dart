@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../buyer/order_placement_sheet.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
@@ -14,21 +17,39 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   String _fishFilter = 'ALL FISH';
   final _searchCtrl = TextEditingController();
 
-  static const _listings = [
-    _Listing('Nile Perch', 4.8, 12, 'Bor', 'Juba', 120, 2450),
-    _Listing('Tilapia (Fresh)', 4.2, 5, 'Panyagoor', 'Bor', 45, 1800),
-    _Listing('Catfish', 4.5, 8, 'Twic East', 'Juba', 200, 2100),
-    _Listing('Lungfish', 4.0, 3, 'Fangak', 'Malakal', 80, 1600),
-    _Listing('Nile Perch (Smoked)', 4.7, 15, 'Bor', 'Renk', 300, 3200),
-  ];
+  List<_Listing> _listings = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+    try {
+      final api = context.read<AuthProvider>().api;
+      final raw = await api.get('/marketplace/listings/?status=ACTIVE') as List;
+      if (mounted) {
+        setState(() {
+          _listings = raw
+              .map((j) => _Listing.fromJson(j as Map<String, dynamic>))
+              .toList();
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
 
   List<_Listing> get _filtered {
     final q = _searchCtrl.text.toLowerCase();
     return _listings.where((l) {
       if (q.isNotEmpty &&
           !l.fish.toLowerCase().contains(q) &&
-          !l.origin.toLowerCase().contains(q) &&
-          !l.destination.toLowerCase().contains(q)) {
+          !l.seller.toLowerCase().contains(q) &&
+          !l.location.toLowerCase().contains(q)) {
         return false;
       }
       return true;
@@ -61,23 +82,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                           style: AppTextStyles.ui(16, weight: FontWeight.w800,
                               color: AppColors.primary)),
                       const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceLow,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.wifi_off_rounded,
-                                size: 12, color: AppColors.onSurfaceVariant),
-                            const SizedBox(width: 4),
-                            Text('CACHED',
-                                style: AppTextStyles.label(9,
-                                    color: AppColors.onSurfaceVariant)),
-                          ],
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded),
+                        color: AppColors.onSurfaceVariant,
+                        iconSize: 20,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: _load,
+                        tooltip: 'Refresh listings',
                       ),
                       const SizedBox(width: 8),
                       Icon(Icons.notifications_outlined,
@@ -135,34 +147,89 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           // Listings
           SliverPadding(
             padding: const EdgeInsets.all(14),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (_, i) => _ListingCard(listing: _filtered[i]),
-                childCount: _filtered.length,
-              ),
-            ),
+            sliver: _loading
+                ? SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => Container(
+                        height: 120,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceHigh,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.card),
+                        ),
+                      ),
+                      childCount: 3,
+                    ),
+                  )
+                : _filtered.isEmpty
+                    ? SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 48),
+                          child: Center(
+                            child: Text(
+                              'No listings found',
+                              style: AppTextStyles.ui(14,
+                                  color: AppColors.onSurfaceVariant),
+                            ),
+                          ),
+                        ),
+                      )
+                    : SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (_, i) => _ListingCard(listing: _filtered[i]),
+                          childCount: _filtered.length,
+                        ),
+                      ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: _load,
         backgroundColor: AppColors.secondary,
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 28),
       ),
     );
   }
 }
 
 class _Listing {
+  final String id;
   final String fish;
   final double rating;
   final int trades;
-  final String origin;
-  final String destination;
-  final int quantityKg;
-  final int pricePerKg;
-  const _Listing(this.fish, this.rating, this.trades, this.origin,
-      this.destination, this.quantityKg, this.pricePerKg);
+  final String seller;
+  final String location;
+  final double quantityKg;
+  final double pricePerKg;
+
+  const _Listing({
+    required this.id,
+    required this.fish,
+    required this.rating,
+    required this.trades,
+    required this.seller,
+    required this.location,
+    required this.quantityKg,
+    required this.pricePerKg,
+  });
+
+  factory _Listing.fromJson(Map<String, dynamic> j) {
+    final sellerDetail = (j['seller_detail'] as Map?) ?? {};
+    return _Listing(
+      id: j['id']?.toString() ?? '',
+      fish: j['species']?.toString() ?? '—',
+      rating:
+          double.tryParse(sellerDetail['rating']?.toString() ?? '') ?? 0.0,
+      trades: (sellerDetail['total_transactions'] as int?) ?? 0,
+      seller: sellerDetail['username']?.toString() ?? '—',
+      location: j['location']?.toString() ?? '—',
+      quantityKg:
+          double.tryParse(j['quantity_kg']?.toString() ?? '') ?? 0,
+      pricePerKg:
+          double.tryParse(j['price_ssp']?.toString() ?? '') ?? 0,
+    );
+  }
 }
 
 class _ListingCard extends StatelessWidget {
@@ -213,7 +280,7 @@ class _ListingCard extends StatelessWidget {
                         style: AppTextStyles.label(9,
                             color: AppColors.onSurfaceFaint)),
                     Text(
-                      'SSP ${listing.pricePerKg.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                      'SSP ${listing.pricePerKg.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
                       style: AppTextStyles.data(18,
                           weight: FontWeight.w700, color: AppColors.primary),
                     ),
@@ -224,10 +291,10 @@ class _ListingCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Icons.swap_horiz_rounded,
+                const Icon(Icons.person_outline_rounded,
                     size: 14, color: AppColors.onSurfaceVariant),
                 const SizedBox(width: 4),
-                Text('${listing.origin} → ${listing.destination}',
+                Text('${listing.seller} · ${listing.location}',
                     style: AppTextStyles.ui(12,
                         color: AppColors.onSurfaceVariant)),
               ],
@@ -238,7 +305,7 @@ class _ListingCard extends StatelessWidget {
                 const Icon(Icons.inventory_2_outlined,
                     size: 14, color: AppColors.onSurfaceVariant),
                 const SizedBox(width: 4),
-                Text('Quantity: ${listing.quantityKg} KG',
+                Text('Quantity: ${listing.quantityKg.toStringAsFixed(0)} KG',
                     style: AppTextStyles.ui(12,
                         color: AppColors.onSurfaceVariant)),
               ],
@@ -248,10 +315,19 @@ class _ListingCard extends StatelessWidget {
               width: double.infinity,
               height: 44,
               child: ElevatedButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Purchase request — coming soon'),
-                      behavior: SnackBarBehavior.floating),
+                onPressed: () => showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => OrderPlacementSheet(
+                    listingId: listing.id,
+                    species: listing.fish,
+                    maxQty: listing.quantityKg,
+                    pricePerUnit: listing.pricePerKg,
+                    unit: 'KG',
+                    seller: listing.seller,
+                    location: listing.location,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

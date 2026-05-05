@@ -57,12 +57,19 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function Analytics() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [chartLoading, setChartLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     api.get('/auth/users/')
       .then(r => setUsers(Array.isArray(r.data) ? r.data : (r.data?.results ?? [])))
-      .catch(() => {})
+      .catch(() => setError('Failed to load data. Showing cached values.'))
       .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setChartLoading(false), 800)
+    return () => clearTimeout(t)
   }, [])
 
   const byRole = [
@@ -79,6 +86,13 @@ export default function Analytics() {
     <AppLayout title="Analytics" subtitle="Trade volume, user distribution and platform metrics">
       <div className="max-w-[1200px] mx-auto space-y-5">
 
+        {/* Error banner */}
+        {error && (
+          <div className="bg-red-50 border border-red-100 text-red-700 text-[12px] px-4 py-2 rounded-xl animate-fade-up">
+            Failed to load data. Showing cached values.
+          </div>
+        )}
+
         {/* Row 1 — 2-col asymmetric */}
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5">
 
@@ -91,28 +105,40 @@ export default function Analytics() {
                   <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
                     Weekly trade volume
                   </p>
-                  <p className="font-display text-[26px] text-stone-900 leading-tight mt-0.5">
-                    13,910 <span className="text-[18px] text-stone-400">kg</span>
-                  </p>
+                  {chartLoading ? (
+                    <div className="shimmer h-8 w-24 rounded-lg mt-0.5" />
+                  ) : (
+                    <p className="font-display text-[26px] text-stone-900 leading-tight mt-0.5">
+                      13,910 <span className="text-[18px] text-stone-400">kg</span>
+                    </p>
+                  )}
                 </div>
-                <span className="text-[11px] font-mono px-2 py-1 bg-green-50 text-green-700 rounded-lg font-semibold">
-                  +18.4% vs last month
-                </span>
+                {chartLoading ? (
+                  <div className="shimmer h-7 w-32 rounded-lg" />
+                ) : (
+                  <span className="text-[11px] font-mono px-2 py-1 bg-green-50 text-green-700 rounded-lg font-semibold">
+                    +18.4% vs last month
+                  </span>
+                )}
               </div>
-              <ResponsiveContainer width="100%" height={180}>
-                <AreaChart data={VOLUME_DATA} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id="gVol" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#005440" stopOpacity={0.14} />
-                      <stop offset="95%" stopColor="#005440" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#97A8A3', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#97A8A3', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={40} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="volume" name="Volume (kg)" stroke="#005440" strokeWidth={2.5} fill="url(#gVol)" dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {chartLoading ? (
+                <div className="shimmer h-48 rounded-xl" />
+              ) : (
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={VOLUME_DATA} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                    <defs>
+                      <linearGradient id="gVol" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#005440" stopOpacity={0.14} />
+                        <stop offset="95%" stopColor="#005440" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#97A8A3', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#97A8A3', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="volume" name="Volume (kg)" stroke="#005440" strokeWidth={2.5} fill="url(#gVol)" dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -123,36 +149,42 @@ export default function Analytics() {
               <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-4">
                 Clearance status
               </p>
-              <div className="flex items-center justify-center">
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie
-                      data={CLEARANCE_DATA}
-                      cx="50%" cy="50%"
-                      innerRadius={45}
-                      outerRadius={72}
-                      strokeWidth={0}
-                      dataKey="value"
-                    >
-                      {CLEARANCE_DATA.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-2 mt-2">
-                {CLEARANCE_DATA.map(({ name, value, color }) => (
-                  <div key={name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
-                      <span className="text-[12px] text-stone-600 font-medium">{name}</span>
-                    </div>
-                    <span className="font-mono text-[12px] font-semibold text-stone-700">{value}</span>
+              {chartLoading ? (
+                <div className="shimmer h-48 rounded-xl" />
+              ) : (
+                <>
+                  <div className="flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={160}>
+                      <PieChart>
+                        <Pie
+                          data={CLEARANCE_DATA}
+                          cx="50%" cy="50%"
+                          innerRadius={45}
+                          outerRadius={72}
+                          strokeWidth={0}
+                          dataKey="value"
+                        >
+                          {CLEARANCE_DATA.map((entry) => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-2 mt-2">
+                    {CLEARANCE_DATA.map(({ name, value, color }) => (
+                      <div key={name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                          <span className="text-[12px] text-stone-600 font-medium">{name}</span>
+                        </div>
+                        <span className="font-mono text-[12px] font-semibold text-stone-700">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

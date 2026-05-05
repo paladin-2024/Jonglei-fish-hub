@@ -1,10 +1,27 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import AppLayout from '../components/AppLayout'
 import {
   Fish, Search, Filter, TrendingUp,
   ChevronDown, X, Eye, Trash2, Star,
-  MapPin, Package, Calendar, ArrowUpRight,
+  MapPin, Package, Calendar, ArrowUpRight, RefreshCw,
 } from 'lucide-react'
+import api from '../api/axios'
+
+function normalizeListing(l) {
+  const seller = l.seller_detail ?? l.seller ?? {}
+  return {
+    id:       l.id?.toString().toUpperCase().slice(-8) ?? l.id,
+    fish:     l.species ?? '—',
+    seller:   typeof seller === 'object' ? (seller.username ?? seller.phone_number ?? '—') : seller,
+    location: l.location ?? '—',
+    qty:      Number(l.quantity_kg ?? 0),
+    price:    Number(l.price_ssp   ?? 0),
+    unit:     l.unit ?? 'KG',
+    status:   l.status ?? 'DRAFT',
+    date:     l.created_at ? new Date(l.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—',
+    photo:    l.photo_url || null,
+  }
+}
 
 const LISTINGS = [
   { id: 'LST-0051', fish: 'Nile Perch',          seller: 'B. Deng (Bor)',       location: 'Bor',       qty: 250, price: 2450, unit: 'KG',   status: 'ACTIVE',  date: '02 May 2026', photo: null },
@@ -171,15 +188,31 @@ function DetailPanel({ listing, onClose }) {
 }
 
 export default function Listings() {
+  const [listings, setListings]         = useState(LISTINGS)
+  const [loading, setLoading]           = useState(true)
+  const [liveData, setLiveData]         = useState(false)
   const [activeFilter, setActiveFilter] = useState('ALL')
   const [search, setSearch]             = useState('')
   const [sortCol, setSortCol]           = useState('date')
   const [sortDir, setSortDir]           = useState('desc')
   const [selected, setSelected]         = useState(null)
 
+  useEffect(() => {
+    api.get('/marketplace/listings/')
+      .then(r => {
+        const raw = Array.isArray(r.data) ? r.data : (r.data?.results ?? [])
+        if (raw.length > 0) {
+          setListings(raw.map(normalizeListing))
+          setLiveData(true)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return LISTINGS
+    return listings
       .filter(l => activeFilter === 'ALL' || l.status === activeFilter)
       .filter(l => !q || [l.id, l.fish, l.seller, l.location].some(v => v.toLowerCase().includes(q)))
       .sort((a, b) => {
@@ -194,6 +227,13 @@ export default function Listings() {
     [filtered]
   )
 
+  const kpiItems = useMemo(() => [
+    { label: 'TOTAL LISTINGS', val: listings.length,                                      bar: '#005440' },
+    { label: 'ACTIVE',         val: listings.filter(l => l.status === 'ACTIVE').length,   bar: '#0F766E' },
+    { label: 'SOLD OUT',       val: listings.filter(l => l.status === 'SOLD').length,     bar: '#6B7280' },
+    { label: 'ACTIVE VALUE',   val: 'SSP ' + listings.filter(l => l.status === 'ACTIVE').reduce((s, l) => s + (l.qty * l.price), 0).toLocaleString(), bar: '#B45309' },
+  ], [listings])
+
   function toggleSort(col) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('desc') }
@@ -205,12 +245,14 @@ export default function Listings() {
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {KPI_ITEMS.map((k, i) => (
+          {kpiItems.map((k, i) => (
             <div key={i} className={`bg-white rounded-xl shadow-card overflow-hidden flex flex-col animate-fade-up stagger-${i + 1}`}>
               <div className="h-[3px] w-full flex-shrink-0" style={{ background: k.bar }} />
               <div className="p-4 flex flex-col gap-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">{k.label}</p>
-                <span className="font-mono text-2xl font-semibold leading-none text-stone-900">{k.val()}</span>
+                <span className="font-mono text-2xl font-semibold leading-none text-stone-900">
+                  {loading ? <span className="inline-block h-7 w-16 bg-stone-100 rounded animate-pulse" /> : k.val}
+                </span>
               </div>
             </div>
           ))}
@@ -231,8 +273,14 @@ export default function Listings() {
             </div>
             <div className="flex items-center gap-2 text-[12px] text-stone-400">
               <Filter size={12} />
-              <span>{filtered.length} of {LISTINGS.length} listings</span>
+              <span>{filtered.length} of {listings.length} listings</span>
             </div>
+            {liveData && (
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-lg">
+                <RefreshCw size={10} strokeWidth={2.5} />
+                LIVE
+              </div>
+            )}
             {activeValue > 0 && (
               <div className="flex items-center gap-1.5 bg-teal-50 text-teal-700 text-[11px] font-semibold px-3 py-1.5 rounded-lg">
                 <TrendingUp size={11} strokeWidth={2.5} />

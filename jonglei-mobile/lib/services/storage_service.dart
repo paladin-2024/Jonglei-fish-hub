@@ -30,4 +30,9 @@ class StorageService {
   }
 
   Future<void> clearAll() => _storage.deleteAll();
+
+  Future<void> setString(String key, String value) =>
+      _storage.write(key: key, value: value);
+
+  Future<String?> getString(String key) => _storage.read(key: key);
 }

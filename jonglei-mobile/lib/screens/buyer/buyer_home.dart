@@ -3,8 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../shared/fish_encyclopedia_screen.dart';
 import '../shared/market_map_screen.dart';
+import '../shared/notification_screen.dart';
 import '../shared/profile_screen.dart';
+import 'browse_listings_screen.dart';
+import 'buyer_orders_screen.dart';
 
 class BuyerHomeScreen extends StatefulWidget {
   const BuyerHomeScreen({super.key});
@@ -20,7 +24,8 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
   Widget build(BuildContext context) {
     final tabs = [
       const _BuyerDashboard(),
-      const _BuyerBrowse(),
+      const BrowseListingsScreen(),
+      const BuyerOrdersScreen(),
       const MarketMapScreen(),
       const ProfileScreen(),
     ];
@@ -40,6 +45,10 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
               selectedIcon: Icon(Icons.search_rounded),
               label: 'BROWSE'),
           NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long_rounded),
+              label: 'ORDERS'),
+          NavigationDestination(
               icon: Icon(Icons.map_outlined),
               selectedIcon: Icon(Icons.map_rounded),
               label: 'MARKETS'),
@@ -53,14 +62,39 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
   }
 }
 
-class _BuyerDashboard extends StatelessWidget {
+class _BuyerDashboard extends StatefulWidget {
   const _BuyerDashboard();
 
+  @override
+  State<_BuyerDashboard> createState() => _BuyerDashboardState();
+}
+
+class _BuyerDashboardState extends State<_BuyerDashboard> {
   static const _featured = [
     _Market('Juba Central', 'Nile Perch', 'SSP 800', 2800),
     _Market('Bor Market', 'Tilapia', 'SSP 450', 1800),
     _Market('Malakal Landing', 'Catfish', 'SSP 350', 1200),
   ];
+
+  int _orderCount = 0;
+  bool _loadingOrders = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOrderCount();
+  }
+
+  Future<void> _fetchOrderCount() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final raw = await api.get('/marketplace/orders/my-orders/');
+      final list = raw is List ? raw : (raw['results'] as List? ?? []);
+      if (mounted) setState(() { _orderCount = list.length; _loadingOrders = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingOrders = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +148,11 @@ class _BuyerDashboard extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.notifications_outlined),
                     color: AppColors.onSurfaceVariant,
-                    onPressed: () {},
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const NotificationScreen()),
+                    ),
                   ),
                 ],
               ),
@@ -129,7 +167,7 @@ class _BuyerDashboard extends StatelessWidget {
                 children: [
                   LedgerStatCard(
                     label: 'My Orders',
-                    value: '0',
+                    value: _loadingOrders ? '…' : '$_orderCount',
                     accentColor: AppColors.primary,
                     icon: Icons.receipt_long_outlined,
                     wide: true,
@@ -174,7 +212,55 @@ class _BuyerDashboard extends StatelessWidget {
 
                   ..._featured.map((m) => _MarketTile(market: m)),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
+
+                  // Encyclopedia quick-link
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const FishEncyclopediaScreen()),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 13),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.menu_book_rounded,
+                                size: 18, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Fish Encyclopedia',
+                                    style: AppTextStyles.ui(14,
+                                        weight: FontWeight.w700)),
+                                Text('Species guide & nutritional facts',
+                                    style: AppTextStyles.ui(12,
+                                        color: AppColors.onSurfaceVariant)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded,
+                              size: 18, color: AppColors.onSurfaceFaint),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
 
                   // Price alert CTA
                   Container(
@@ -291,123 +377,3 @@ class _MarketTile extends StatelessWidget {
   }
 }
 
-// ─── Browse tab ───────────────────────────────────────────────────────────────
-class _BuyerBrowse extends StatefulWidget {
-  const _BuyerBrowse();
-
-  @override
-  State<_BuyerBrowse> createState() => _BuyerBrowseState();
-}
-
-class _BuyerBrowseState extends State<_BuyerBrowse> {
-  String _selected = 'All';
-  final _types = [
-    'All',
-    'Nile Perch',
-    'Tilapia',
-    'Catfish',
-    'Lungfish',
-    'Elephant Snout',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surfaceLow,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Container(
-              color: AppColors.surface,
-              padding: EdgeInsets.fromLTRB(
-                  18, MediaQuery.of(context).padding.top + 16, 18, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Browse Fish',
-                                style: AppTextStyles.ui(18,
-                                    weight: FontWeight.w800)),
-                            Text('AVAILABLE LISTINGS',
-                                style: AppTextStyles.label(10,
-                                    color: AppColors.onSurfaceVariant)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _types.map((t) {
-                        final active = t == _selected;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selected = t),
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8, bottom: 12),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 7),
-                            decoration: BoxDecoration(
-                              color: active
-                                  ? AppColors.secondaryLight
-                                  : AppColors.surfaceHigh,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(t,
-                                style: AppTextStyles.label(11,
-                                    color: active
-                                        ? AppColors.secondary
-                                        : AppColors.onSurfaceVariant,
-                                    weight: FontWeight.w700)),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SliverFillRemaining(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(40),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceHigh,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(Icons.set_meal_outlined,
-                          size: 32, color: AppColors.primary),
-                    ),
-                    const SizedBox(height: 16),
-                    Text('No listings yet',
-                        style: AppTextStyles.ui(15, weight: FontWeight.w700)),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Fish listings from traders\nwill appear here.',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.ui(13,
-                          color: AppColors.onSurfaceVariant, height: 1.5),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

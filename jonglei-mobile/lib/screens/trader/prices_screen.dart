@@ -1,10 +1,20 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/shimmer_box.dart';
 
-class PricesScreen extends StatelessWidget {
+class PricesScreen extends StatefulWidget {
   const PricesScreen({super.key});
 
-  static const _cities = [
+  @override
+  State<PricesScreen> createState() => _PricesScreenState();
+}
+
+class _PricesScreenState extends State<PricesScreen> {
+  static const _staticCities = [
     _CityPrices('BOR', 'JONGLEI STATE', [
       _FishPrice('Nile Perch', 2450, 80),
       _FishPrice('Tilapia', 1800, -20),
@@ -26,6 +36,73 @@ class PricesScreen extends StatelessWidget {
       _FishPrice('Catfish', 1050, 0),
     ]),
   ];
+
+  List<_CityPrices> _cities = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCached().then((_) => _fetchPrices());
+  }
+
+  Future<void> _loadCached() async {
+    try {
+      final box = await Hive.openBox('jonglei_cache');
+      final raw = box.get('prices');
+      if (raw != null) {
+        final cached = jsonDecode(raw as String) as List;
+        if (mounted) {
+          setState(() {
+            _cities = _parseCities(cached);
+            _loading = false;
+          });
+        }
+      }
+    } catch (_) {
+      // Cache miss — continue to fetch
+    }
+  }
+
+  Future<void> _fetchPrices() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final data = await api.get('/marketplace/prices/');
+      final list = data is List ? data : (data['results'] as List? ?? []);
+      final parsed = _parseCities(list);
+      final box = await Hive.openBox('jonglei_cache');
+      await box.put('prices', jsonEncode(list));
+      if (mounted) {
+        setState(() {
+          _cities = parsed;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      // Fall back to static data if API fails and no cached data
+      if (mounted && _cities.isEmpty) {
+        setState(() {
+          _cities = _staticCities;
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  List<_CityPrices> _parseCities(List<dynamic> data) {
+    return data.map((item) {
+      final city = (item['city'] as String? ?? '').toUpperCase();
+      final region = (item['region'] as String? ?? '').toUpperCase();
+      final pricesList = (item['prices'] as List? ?? []).map((p) {
+        return _FishPrice(
+          p['species'] as String? ?? '',
+          (p['price_ssp'] as num? ?? 0).toInt(),
+          (p['delta'] as num? ?? 0).toInt(),
+        );
+      }).toList();
+      return _CityPrices(city, region, pricesList);
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,21 +162,38 @@ class PricesScreen extends StatelessWidget {
             ),
           ),
 
-          SliverPadding(
-            padding: const EdgeInsets.all(14),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.85,
+          if (_loading)
+            SliverPadding(
+              padding: const EdgeInsets.all(14),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 0.85,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, _) => const ShimmerCard(),
+                  childCount: 4,
+                ),
               ),
-              delegate: SliverChildBuilderDelegate(
-                (_, i) => _CityCard(city: _cities[i]),
-                childCount: _cities.length,
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(14),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 0.85,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => _CityCard(city: _cities[i]),
+                  childCount: _cities.length,
+                ),
               ),
             ),
-          ),
 
           // Market health footer
           SliverToBoxAdapter(

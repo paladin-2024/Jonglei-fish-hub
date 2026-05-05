@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '../api/axios'
 import Sidebar from './Sidebar'
-import { Search, Bell, X, LayoutDashboard, Users, ShoppingBag, Truck, BarChart3, TrendingUp, Tag } from 'lucide-react'
+import { Search, Bell, X, Menu, LayoutDashboard, Users, ShoppingBag, Truck, BarChart3, TrendingUp, Tag, ShieldCheck } from 'lucide-react'
 
 const SEARCH_SHORTCUTS = [
   { label: 'Overview',      to: '/dashboard',     Icon: LayoutDashboard },
@@ -9,6 +10,7 @@ const SEARCH_SHORTCUTS = [
   { label: 'Listings',      to: '/listings',       Icon: Tag             },
   { label: 'Orders',        to: '/orders',         Icon: ShoppingBag     },
   { label: 'Shipments',     to: '/shipments',      Icon: Truck           },
+  { label: 'Clearance',     to: '/clearance',      Icon: ShieldCheck     },
   { label: 'Market Prices', to: '/market-prices',  Icon: TrendingUp      },
   { label: 'Analytics',     to: '/analytics',      Icon: BarChart3       },
 ]
@@ -46,7 +48,6 @@ function CommandPalette({ open, onClose }) {
         className="relative w-full max-w-[440px] bg-white rounded-2xl shadow-[0_24px_80px_rgba(0,31,26,0.18)] overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        {/* Top accent */}
         <div className="h-[3px]" style={{ background: '#005440' }} />
 
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-stone-100">
@@ -100,8 +101,52 @@ function CommandPalette({ open, onClose }) {
 }
 
 export default function AppLayout({ children, title, subtitle }) {
+  const navigate = useNavigate()
   const [cmdOpen, setCmdOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
+  const fetchUnread = useCallback(async () => {
+    try {
+      const { data } = await api.get('/notifications/')
+      const list = Array.isArray(data) ? data : (data.results ?? [])
+      setUnreadCount(list.filter(n => !n.is_read).length)
+    } catch {
+      // no-op — keep previous count
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchUnread()
+    const id = setInterval(fetchUnread, 60_000)
+    return () => clearInterval(id)
+  }, [fetchUnread])
+
+  // Desktop: collapsed sidebar state, persisted
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebar_collapsed') === 'true' }
+    catch { return false }
+  })
+
+  // Mobile: drawer open state
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const toggleCollapsed = () => {
+    setCollapsed(v => {
+      const next = !v
+      try { localStorage.setItem('sidebar_collapsed', String(next)) } catch {}
+      return next
+    })
+  }
+
+  // Close drawer on route change (handled via onClose prop passed to Sidebar)
+  // Close drawer on resize to desktop
+  useEffect(() => {
+    const onResize = () => { if (window.innerWidth >= 768) setDrawerOpen(false) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  // ⌘K shortcut
   useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -115,38 +160,103 @@ export default function AppLayout({ children, title, subtitle }) {
 
   return (
     <div className="flex min-h-screen bg-canvas">
-      <Sidebar />
 
+      {/* ── Desktop sidebar (hidden on mobile) ── */}
+      <div className="hidden md:flex flex-shrink-0">
+        <Sidebar
+          collapsed={collapsed}
+          onToggle={toggleCollapsed}
+        />
+      </div>
+
+      {/* ── Mobile drawer overlay ── */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-40 md:hidden"
+          onClick={() => setDrawerOpen(false)}
+        >
+          <div className="absolute inset-0 bg-stone-900/50 backdrop-blur-[2px]" />
+        </div>
+      )}
+
+      {/* ── Mobile drawer panel ── */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 md:hidden
+                    transition-transform duration-300 ease-in-out
+                    ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <Sidebar
+          collapsed={false}
+          mobile
+          onClose={() => setDrawerOpen(false)}
+        />
+      </div>
+
+      {/* ── Main content ── */}
       <div className="flex-1 flex flex-col min-w-0">
+
         {/* Topbar */}
-        <header className="h-[52px] bg-white border-b border-stone-200/60 flex items-center justify-between px-6 sticky top-0 z-20">
-          <button
-            onClick={() => setCmdOpen(true)}
-            className="flex items-center gap-2 pl-3 pr-4 py-2 text-[13px] bg-stone-50
-                       border border-stone-200 rounded-xl text-stone-400 w-52
-                       hover:border-teal-300 hover:bg-teal-50/40
-                       transition-all duration-200 ease-spring group"
-          >
-            <Search size={13} className="group-hover:text-teal-600 transition-colors flex-shrink-0" />
-            <span className="flex-1 text-left">Search…</span>
-            <span className="font-mono text-[10px] bg-white border border-stone-200 text-stone-400 px-1.5 py-0.5 rounded">
-              ⌘K
-            </span>
-          </button>
+        <header className="h-[52px] bg-white border-b border-stone-200/60 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            {/* Hamburger — mobile only */}
+            <button
+              className="md:hidden w-8 h-8 flex items-center justify-center rounded-xl
+                         hover:bg-stone-100 transition-colors text-stone-500"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={17} strokeWidth={2} />
+            </button>
+
+            {/* Search / command palette trigger */}
+            <button
+              onClick={() => setCmdOpen(true)}
+              className="hidden sm:flex items-center gap-2 pl-3 pr-4 py-2 text-[13px] bg-stone-50
+                         border border-stone-200 rounded-xl text-stone-400 w-52
+                         hover:border-teal-300 hover:bg-teal-50/40
+                         transition-all duration-200 ease-spring group"
+            >
+              <Search size={13} className="group-hover:text-teal-600 transition-colors flex-shrink-0" />
+              <span className="flex-1 text-left">Search…</span>
+              <span className="font-mono text-[10px] bg-white border border-stone-200 text-stone-400 px-1.5 py-0.5 rounded">
+                ⌘K
+              </span>
+            </button>
+
+            {/* Search icon-only for very small screens */}
+            <button
+              onClick={() => setCmdOpen(true)}
+              className="sm:hidden w-8 h-8 flex items-center justify-center rounded-xl
+                         hover:bg-stone-100 transition-colors text-stone-500"
+              aria-label="Search"
+            >
+              <Search size={15} strokeWidth={1.75} />
+            </button>
+          </div>
 
           <div className="flex items-center gap-1.5">
-            <button className="relative w-8 h-8 flex items-center justify-center rounded-xl hover:bg-stone-100 transition-colors">
+            <button
+              onClick={() => navigate('/notifications')}
+              className="relative w-8 h-8 flex items-center justify-center rounded-xl hover:bg-stone-100 transition-colors"
+              title="Notifications"
+            >
               <Bell size={15} className="text-stone-500" strokeWidth={1.75} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[14px] h-[14px] px-0.5
+                                 flex items-center justify-center rounded-full
+                                 bg-amber-500 text-white text-[8px] font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           </div>
         </header>
 
         {/* Page heading */}
         {(title || subtitle) && (
-          <div className="px-7 pt-7 pb-1 animate-fade-up">
+          <div className="px-4 md:px-7 pt-7 pb-1 animate-fade-up">
             {title && (
-              <h1 className="font-display text-[26px] text-stone-900 leading-tight tracking-tight">
+              <h1 className="font-display text-[22px] md:text-[26px] text-stone-900 leading-tight tracking-tight">
                 {title}
               </h1>
             )}
@@ -156,7 +266,7 @@ export default function AppLayout({ children, title, subtitle }) {
           </div>
         )}
 
-        <main className="flex-1 p-6 pt-5">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pt-4 md:pt-5">{children}</main>
       </div>
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />

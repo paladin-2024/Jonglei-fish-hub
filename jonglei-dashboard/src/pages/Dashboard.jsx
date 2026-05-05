@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import AppLayout from '../components/AppLayout'
 import StatCard from '../components/StatCard'
 import { StatSkeleton, TableSkeleton } from '../components/Skeleton'
-import { Users, Fish, Truck, ArrowRight, UserCheck, UserX } from 'lucide-react'
+import { Users, Fish, Truck, ArrowRight, UserCheck, UserX, TrendingUp } from 'lucide-react'
 import api from '../api/axios'
 
 const ROLE_BADGE = {
@@ -32,6 +32,8 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState(null)
+  const [statsLoading, setStatsLoading] = useState(true)
 
   const hour = new Date().getHours()
   const greeting =
@@ -42,6 +44,13 @@ export default function Dashboard() {
       .then(r => setUsers(Array.isArray(r.data) ? r.data : (r.data?.results ?? [])))
       .catch(() => {})
       .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    api.get('/dashboard/stats/')
+      .then(r => setStats(r.data ?? null))
+      .catch(() => {})
+      .finally(() => setStatsLoading(false))
   }, [])
 
   const traders      = users.filter(u => u.role === 'TRADER').length
@@ -78,7 +87,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stat cards — staggered reveal */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {loading ? (
             [0,1,2,3].map(i => <StatSkeleton key={i} />)
           ) : (
@@ -92,13 +101,42 @@ export default function Dashboard() {
                   Icon={Fish} color="green" note={`${buyers} buyers`} />
               </div>
               <div className="animate-fade-up stagger-3">
-                <StatCard title="Pending clearances" value="—"
-                  Icon={UserX} color="amber" note="Clearance module coming" />
+                <StatCard
+                  title="Pending clearances"
+                  value={stats?.pending_clearances != null ? String(stats.pending_clearances) : '—'}
+                  Icon={UserX} color="amber"
+                  note={stats?.pending_clearances != null ? `${stats.pending_clearances} pending` : 'Clearance module'}
+                />
               </div>
               <div className="animate-fade-up stagger-4">
                 <StatCard title="Transport operators" value={String(transporters || 0)}
                   Icon={Truck} color="indigo" note="Transporters + drivers" />
               </div>
+              {statsLoading ? (
+                <>
+                  <StatSkeleton />
+                  <StatSkeleton />
+                </>
+              ) : (
+                <>
+                  <div className="animate-fade-up stagger-5">
+                    <StatCard
+                      title="Active listings"
+                      value={stats?.active_listings != null ? String(stats.active_listings) : '—'}
+                      Icon={Fish} color="green"
+                      note="Live marketplace listings"
+                    />
+                  </div>
+                  <div className="animate-fade-up stagger-6">
+                    <StatCard
+                      title="Total revenue"
+                      value={stats?.total_revenue ? 'SSP ' + (stats.total_revenue / 1000000).toFixed(1) + 'M' : '—'}
+                      Icon={TrendingUp} color="amber"
+                      note="Cumulative trade value"
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
