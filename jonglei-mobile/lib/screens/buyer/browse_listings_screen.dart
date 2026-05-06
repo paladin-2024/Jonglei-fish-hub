@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/rating_stars.dart';
 import 'order_placement_sheet.dart';
 
 class _Listing {
@@ -13,9 +14,12 @@ class _Listing {
   final String location;
   final String seller;
   final String status;
+  final double sellerRating;
+  final int sellerRatingCount;
 
   const _Listing(this.id, this.species, this.qty, this.unit, this.price,
-      this.location, this.seller, this.status);
+      this.location, this.seller, this.status,
+      {this.sellerRating = 0.0, this.sellerRatingCount = 0});
 }
 
 const _sampleListings = [
@@ -67,16 +71,24 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
       final raw = await api.get('/marketplace/listings/?status=ACTIVE') as List;
       if (raw.isNotEmpty && mounted) {
         setState(() {
-          _listings = raw.map((j) => _Listing(
-            j['id']?.toString() ?? '',
-            j['species'] ?? '—',
-            double.tryParse(j['quantity_kg']?.toString() ?? '') ?? 0,
-            j['unit'] ?? 'KG',
-            double.tryParse(j['price_ssp']?.toString() ?? '') ?? 0,
-            j['location'] ?? '—',
-            (j['seller_detail'] as Map?)?['username'] ?? '—',
-            j['status'] ?? 'ACTIVE',
-          )).toList();
+          _listings = raw.map((j) {
+            final sellerDetail = (j['seller_detail'] as Map?) ?? {};
+            return _Listing(
+              j['id']?.toString() ?? '',
+              j['species'] ?? '—',
+              double.tryParse(j['quantity_kg']?.toString() ?? '') ?? 0,
+              j['unit'] ?? 'KG',
+              double.tryParse(j['price_ssp']?.toString() ?? '') ?? 0,
+              j['location'] ?? '—',
+              sellerDetail['username'] ?? '—',
+              j['status'] ?? 'ACTIVE',
+              sellerRating: double.tryParse(
+                      sellerDetail['avg_rating']?.toString() ?? '') ??
+                  0.0,
+              sellerRatingCount:
+                  (sellerDetail['rating_count'] as int?) ?? 0,
+            );
+          }).toList();
         });
       }
     } catch (_) {}
@@ -327,6 +339,12 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
                                                     12,
                                                     color: AppColors
                                                         .onSurfaceVariant)),
+                                            const SizedBox(height: 3),
+                                            RatingStars(
+                                              rating: l.sellerRating,
+                                              count: l.sellerRatingCount,
+                                              size: 12,
+                                            ),
                                           ],
                                         ),
                                       ),

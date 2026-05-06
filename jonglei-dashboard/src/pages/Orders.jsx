@@ -2,22 +2,16 @@ import { useState, useMemo, useEffect } from 'react'
 import AppLayout from '../components/AppLayout'
 import {
   ShoppingBag, Search, Filter, TrendingUp,
-  ChevronDown, MoreHorizontal, ArrowUpRight, RefreshCw,
+  ChevronDown, ChevronRight, RefreshCw, ArrowUpRight,
 } from 'lucide-react'
 import api from '../api/axios'
 
-const FALLBACK_ORDERS = [
-  { id: 'ORD-0091', fish: 'Nile Perch',          qty: '120 kg', buyer: 'Juba Market',         seller: 'B. Deng (Bor)',       price: 294000, status: 'CONFIRMED',  date: '02 May 2026', route: 'Bor → Juba'       },
-  { id: 'ORD-0090', fish: 'Tilapia (Fresh)',      qty: '45 kg',  buyer: 'K. Akol',             seller: 'P. Chol (Panyagoor)', price: 81000,  status: 'IN TRANSIT', date: '02 May 2026', route: 'Panyagoor → Bor'  },
-  { id: 'ORD-0089', fish: 'Catfish',              qty: '200 kg', buyer: 'Malakal Cold Store',  seller: 'T. East Traders',     price: 420000, status: 'PENDING',    date: '01 May 2026', route: 'Twic East → Juba' },
-  { id: 'ORD-0088', fish: 'Nile Perch (Smoked)',  qty: '300 kg', buyer: 'Upper Nile Co.',      seller: 'B. Deng (Bor)',       price: 960000, status: 'CLEARED',    date: '30 Apr 2026', route: 'Bor → Renk'       },
-  { id: 'ORD-0087', fish: 'Lungfish',             qty: '80 kg',  buyer: 'A. Koang',            seller: 'Fangak Hub',          price: 128000, status: 'CLEARED',    date: '29 Apr 2026', route: 'Fangak → Malakal' },
-  { id: 'ORD-0086', fish: 'Tilapia (Smoked)',     qty: '60 kg',  buyer: 'Renk Supply Ltd',     seller: 'K. Thon (Renk)',      price: 126000, status: 'FLAGGED',    date: '28 Apr 2026', route: 'Renk → Juba'      },
-  { id: 'ORD-0085', fish: 'Nile Perch',           qty: '90 kg',  buyer: 'P. Majok',            seller: 'Bor Fisheries',       price: 220500, status: 'CONFIRMED',  date: '27 Apr 2026', route: 'Bor → Juba'       },
-  { id: 'ORD-0084', fish: 'Catfish',              qty: '150 kg', buyer: 'Wau Fish Market',     seller: 'N. Dau (Twic East)',  price: 315000, status: 'IN TRANSIT', date: '26 Apr 2026', route: 'Twic East → Wau'  },
-  { id: 'ORD-0083', fish: 'Tilapia (Fresh)',      qty: '30 kg',  buyer: 'G. Awel',             seller: 'Panyagoor Co-op',     price: 54000,  status: 'CLEARED',    date: '25 Apr 2026', route: 'Panyagoor → Bor'  },
-  { id: 'ORD-0082', fish: 'Nile Perch (Smoked)',  qty: '180 kg', buyer: 'Torit Distributors',  seller: 'B. Deng (Bor)',       price: 576000, status: 'PENDING',    date: '24 Apr 2026', route: 'Bor → Torit'      },
-]
+const CARD_S = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+}
+
 
 function normalizeOrder(o) {
   const listing = o.listing_detail ?? o.listing ?? {}
@@ -31,23 +25,24 @@ function normalizeOrder(o) {
     seller: typeof seller === 'object' ? (seller.username ?? seller.phone_number ?? '—') : seller,
     price:  Number(o.total_price ?? 0),
     status: (o.status ?? 'PENDING').replace('_', ' '),
-    date:   o.created_at ? new Date(o.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—',
+    date:   o.created_at
+      ? new Date(o.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+      : '—',
     route:  listing.location ? `${listing.location} → ?` : '—',
   }
 }
 
 const STATUS_STYLES = {
-  CONFIRMED:    { dot: 'bg-green-500',  badge: 'text-green-700 bg-green-50'  },
-  'IN TRANSIT': { dot: 'bg-blue-500',   badge: 'text-blue-700 bg-blue-50'    },
-  'IN_TRANSIT': { dot: 'bg-blue-500',   badge: 'text-blue-700 bg-blue-50'    },
-  PENDING:      { dot: 'bg-amber-500',  badge: 'text-amber-700 bg-amber-50'  },
-  CLEARED:      { dot: 'bg-teal-600',   badge: 'text-teal-700 bg-teal-50'    },
-  FLAGGED:      { dot: 'bg-red-500',    badge: 'text-red-700 bg-red-50'      },
-  CANCELLED:    { dot: 'bg-stone-400',  badge: 'text-stone-500 bg-stone-100' },
+  CONFIRMED:    { color: '#0AB5A3', bg: 'rgba(10,181,163,0.12)'  },
+  'IN TRANSIT': { color: '#60A5FA', bg: 'rgba(96,165,250,0.12)'  },
+  'IN_TRANSIT': { color: '#60A5FA', bg: 'rgba(96,165,250,0.12)'  },
+  PENDING:      { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)'  },
+  CLEARED:      { color: '#10B981', bg: 'rgba(16,185,129,0.12)'  },
+  FLAGGED:      { color: '#EF4444', bg: 'rgba(239,68,68,0.12)'   },
+  CANCELLED:    { color: '#475569', bg: 'rgba(71,85,105,0.2)'    },
 }
 
 const FILTERS = ['ALL', 'PENDING', 'IN TRANSIT', 'CONFIRMED', 'CLEARED', 'FLAGGED']
-
 const COLS = [
   { col: 'id',     label: 'ORDER ID' },
   { col: 'fish',   label: 'FISH'     },
@@ -63,29 +58,79 @@ function fmtSSP(n) { return 'SSP ' + n.toLocaleString() }
 
 function SortChevron({ active, dir }) {
   if (!active) return null
-  return <ChevronDown size={11} className={`inline ml-0.5 transition-transform duration-150 ${dir === 'asc' ? 'rotate-180' : ''}`} />
+  return (
+    <ChevronDown
+      size={11}
+      className={`inline ml-0.5 transition-transform duration-150 ${dir === 'asc' ? 'rotate-180' : ''}`}
+    />
+  )
 }
 
 function SkeletonRow() {
   return (
-    <tr className="border-b border-stone-50">
+    <tr style={{ borderBottom: '1px solid var(--border)' }}>
       {[...Array(9)].map((_, i) => (
         <td key={i} className="px-5 py-4">
-          <div className="h-3 bg-stone-100 rounded animate-pulse" style={{ width: `${50 + (i % 3) * 20}%` }} />
+          <div className="shimmer h-3 rounded" style={{ width: `${50 + (i % 3) * 20}%` }} />
         </td>
       ))}
     </tr>
   )
 }
 
+function ExpandedDetail({ order }) {
+  const st = STATUS_STYLES[order.status] ?? STATUS_STYLES.PENDING
+  return (
+    <tr style={{ background: 'rgba(10,181,163,0.04)' }}>
+      <td colSpan={9} className="px-6 py-4">
+        <div className="flex flex-wrap gap-6">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Seller</p>
+            <p className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{order.seller}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Route</p>
+            <p className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{order.route}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Quantity</p>
+            <p className="text-[13px] font-semibold" style={{ fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>{order.qty}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Total Value</p>
+            <p className="text-[13px] font-semibold" style={{ fontFamily: 'JetBrains Mono', color: 'var(--primary)' }}>
+              {fmtSSP(order.price)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Date</p>
+            <p className="text-[13px] font-semibold" style={{ fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)' }}>{order.date}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Status</p>
+            <span
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full"
+              style={{ color: st.color, background: st.bg }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: st.color }} />
+              {order.status}
+            </span>
+          </div>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 export default function Orders() {
-  const [orders, setOrders]           = useState(FALLBACK_ORDERS)
+  const [orders, setOrders]           = useState([])
   const [loading, setLoading]         = useState(true)
   const [liveData, setLiveData]       = useState(false)
   const [activeFilter, setActiveFilter] = useState('ALL')
   const [search, setSearch]           = useState('')
   const [sortCol, setSortCol]         = useState('id')
   const [sortDir, setSortDir]         = useState('desc')
+  const [expandedId, setExpandedId]   = useState(null)
 
   const ACTIVE_STATUSES = ['PENDING', 'CONFIRMED', 'IN TRANSIT', 'IN_TRANSIT']
 
@@ -101,19 +146,17 @@ export default function Orders() {
       .catch(() => {})
   }
 
-  // Initial fetch
   useEffect(() => {
     fetchOrders().finally(() => setLoading(false))
   }, [])
 
-  // Polling — only when active orders exist
   const hasActive = orders.some(o => ACTIVE_STATUSES.includes(o.status))
   const [polling, setPolling] = useState(false)
 
   useEffect(() => {
     if (!hasActive) { setPolling(false); return }
     setPolling(true)
-    const id = setInterval(() => { fetchOrders() }, 5000)
+    const id = setInterval(() => fetchOrders(), 5000)
     return () => { clearInterval(id); setPolling(false) }
   }, [hasActive])
 
@@ -135,10 +178,10 @@ export default function Orders() {
   )
 
   const kpiItems = useMemo(() => [
-    { label: 'TOTAL ORDERS',         val: orders.length,                                                                      bar: '#005440' },
-    { label: 'CLEARED',              val: orders.filter(o => o.status === 'CLEARED').length,                                  bar: '#1A6B3C' },
-    { label: 'IN TRANSIT',           val: orders.filter(o => ['IN TRANSIT','IN_TRANSIT'].includes(o.status)).length,          bar: '#1E5C8A' },
-    { label: 'CONF + CLEARED VALUE', val: fmtSSP(orders.filter(o => ['CLEARED','CONFIRMED'].includes(o.status)).reduce((s,o) => s + o.price, 0)), bar: '#B45309' },
+    { label: 'TOTAL ORDERS',         val: orders.length,                                                                     color: 'var(--secondary)'  },
+    { label: 'CLEARED',              val: orders.filter(o => o.status === 'CLEARED').length,                                 color: 'var(--success)'    },
+    { label: 'IN TRANSIT',           val: orders.filter(o => ['IN TRANSIT','IN_TRANSIT'].includes(o.status)).length,        color: '#60A5FA'            },
+    { label: 'CONF + CLEARED VALUE', val: fmtSSP(orders.filter(o => ['CLEARED','CONFIRMED'].includes(o.status)).reduce((s,o) => s + o.price, 0)), color: 'var(--primary)' },
   ], [orders])
 
   function toggleSort(col) {
@@ -148,97 +191,126 @@ export default function Orders() {
 
   return (
     <AppLayout title="Orders" subtitle="Fish purchase transactions across the platform">
-      <div className="max-w-7xl mx-auto space-y-5">
+      <div className="max-w-[1280px] mx-auto space-y-5">
 
         {/* KPI strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {kpiItems.map((k, i) => (
-            <div key={i} className={`bg-white rounded-xl shadow-card overflow-hidden flex flex-col animate-fade-up stagger-${i + 1}`}>
-              <div className="h-[3px] w-full flex-shrink-0" style={{ background: k.bar }} />
-              <div className="p-4 flex flex-col gap-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">{k.label}</p>
-                <span className="font-mono text-2xl font-semibold leading-none text-stone-900">
-                  {loading ? <span className="inline-block h-7 w-16 bg-stone-100 rounded animate-pulse" /> : k.val}
-                </span>
-              </div>
+            <div
+              key={i}
+              className={`p-5 flex flex-col gap-2 animate-fade-up stagger-${i + 1}`}
+              style={CARD_S}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                {k.label}
+              </p>
+              <span
+                className="text-[26px] font-semibold leading-none"
+                style={{ fontFamily: 'JetBrains Mono', color: k.color }}
+              >
+                {loading ? <span className="shimmer inline-block h-7 w-16 rounded-lg" /> : k.val}
+              </span>
             </div>
           ))}
         </div>
 
         {/* Toolbar */}
-        <div className="bg-white rounded-xl shadow-card p-4 flex flex-col gap-3 animate-fade-up stagger-5">
+        <div className="p-4 flex flex-col gap-3 animate-fade-up stagger-5" style={CARD_S}>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: 'var(--text-muted)' }}
+              />
               <input
                 type="text"
                 placeholder="Search order ID, fish, buyer…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-[13px] bg-stone-50 rounded-lg border border-stone-100 focus:outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20 transition font-sans"
+                className="w-full pl-9 pr-4 py-2 text-[13px] rounded-xl outline-none transition-all duration-200"
+                style={{
+                  background: 'var(--bg-glass)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'Outfit',
+                }}
+                onFocus={e => e.target.style.borderColor = 'rgba(10,181,163,0.4)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
               />
             </div>
-            <div className="flex items-center gap-2 text-[12px] text-stone-400">
+            <div className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--text-muted)' }}>
               <Filter size={12} />
-              <span>{filtered.length} of {orders.length} orders</span>
+              <span>{filtered.length} of {orders.length}</span>
             </div>
-            {liveData && (
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-lg">
-                <RefreshCw size={10} strokeWidth={2.5} />
-                LIVE
-              </div>
-            )}
-            {polling && (
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-green-700 bg-green-50 px-2.5 py-1 rounded-lg">
+            {(liveData || polling) && (
+              <div
+                className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg"
+                style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--success)' }}
+              >
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--success)' }} />
+                  <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: 'var(--success)' }} />
                 </span>
                 LIVE
               </div>
             )}
             {filteredRevenue > 0 && (
-              <div className="flex items-center gap-1.5 bg-teal-50 text-teal-700 text-[11px] font-semibold px-3 py-1.5 rounded-lg">
+              <div
+                className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: 'var(--primary-glow)', color: 'var(--primary)' }}
+              >
                 <TrendingUp size={11} strokeWidth={2.5} />
                 {fmtSSP(filteredRevenue)}
               </div>
             )}
           </div>
 
+          {/* Filter chips */}
           <div className="flex gap-2 flex-wrap">
-            {FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full transition-colors ${
-                  activeFilter === f
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+            {FILTERS.map(f => {
+              const st = STATUS_STYLES[f]
+              const isActive = activeFilter === f
+              return (
+                <button
+                  key={f}
+                  onClick={() => setActiveFilter(f)}
+                  className="text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full transition-all duration-200"
+                  style={{
+                    background: isActive
+                      ? (f === 'ALL' ? 'var(--primary)' : (STATUS_STYLES[f]?.bg ?? 'var(--primary-glow)'))
+                      : 'var(--bg-glass)',
+                    color: isActive
+                      ? (f === 'ALL' ? 'var(--bg-deep)' : (STATUS_STYLES[f]?.color ?? 'var(--primary)'))
+                      : 'var(--text-muted)',
+                    border: `1px solid ${isActive ? 'transparent' : 'var(--border)'}`,
+                  }}
+                >
+                  {f}
+                </button>
+              )
+            })}
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-card overflow-hidden animate-fade-up stagger-6">
+        <div className="overflow-hidden animate-fade-up stagger-6" style={CARD_S}>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-stone-100">
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {COLS.map(({ col, label }) => (
                     <th
                       key={col}
                       onClick={() => toggleSort(col)}
-                      className="px-5 py-3 text-[10px] font-semibold uppercase tracking-widest text-stone-400 cursor-pointer select-none whitespace-nowrap hover:text-stone-700 transition-colors"
+                      className="px-5 py-3.5 text-[10px] font-semibold uppercase tracking-widest cursor-pointer select-none whitespace-nowrap transition-all duration-150"
+                      style={{ color: sortCol === col ? 'var(--primary)' : 'var(--text-muted)' }}
                     >
                       {label}
                       <SortChevron active={sortCol === col} dir={sortDir} />
                     </th>
                   ))}
-                  <th className="px-4 py-3 w-10" />
+                  <th className="px-4 py-3 w-8" />
                 </tr>
               </thead>
               <tbody>
@@ -246,64 +318,85 @@ export default function Orders() {
                   [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-16 text-stone-400 text-[13px]">
-                      <ShoppingBag size={28} className="mx-auto mb-3 opacity-25" />
+                    <td colSpan={9} className="text-center py-16 text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                      <ShoppingBag size={28} className="mx-auto mb-3 opacity-30" />
                       No orders match this filter
                     </td>
                   </tr>
                 ) : filtered.map((o) => {
                   const s = STATUS_STYLES[o.status] ?? STATUS_STYLES.PENDING
-                  return (
+                  const isExpanded = expandedId === o.id
+                  return [
                     <tr
                       key={o.id}
-                      className="border-b border-stone-50 hover:bg-stone-50/70 transition-colors group"
+                      className="cursor-pointer transition-all duration-150"
+                      style={{ borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={e => !isExpanded && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                      onMouseLeave={e => !isExpanded && (e.currentTarget.style.background = 'transparent')}
+                      onClick={() => setExpandedId(isExpanded ? null : o.id)}
                     >
                       <td className="px-5 py-3.5">
-                        <span className="font-mono text-[12px] font-semibold text-teal-700">{o.id}</span>
+                        <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>
+                          {o.id}
+                        </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[13px] font-semibold text-stone-800">{o.fish}</span>
+                        <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{o.fish}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="text-[13px] text-stone-700">{o.buyer}</div>
-                        <div className="text-[11px] text-stone-400">{o.seller}</div>
+                        <div className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>{o.buyer}</div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="font-mono text-[12px] text-stone-600">{o.qty}</span>
+                        <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--text-secondary)' }}>{o.qty}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="font-mono text-[13px] font-semibold text-stone-900">{fmtSSP(o.price)}</span>
+                        <span style={{ fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {fmtSSP(o.price)}
+                        </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px] text-stone-500 whitespace-nowrap">{o.route}</span>
+                        <span className="text-[12px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{o.route}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${s.badge}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                        <span
+                          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full"
+                          style={{ color: s.color, background: s.bg }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
                           {o.status}
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px] text-stone-400 whitespace-nowrap">{o.date}</span>
+                        <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-muted)' }} className="whitespace-nowrap">
+                          {o.date}
+                        </span>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-stone-100 text-stone-400">
-                          <MoreHorizontal size={15} />
-                        </button>
+                      <td className="px-3 py-3.5">
+                        <ChevronRight
+                          size={14}
+                          style={{ color: 'var(--text-muted)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s ease' }}
+                        />
                       </td>
-                    </tr>
-                  )
+                    </tr>,
+                    isExpanded && <ExpandedDetail key={`${o.id}-detail`} order={o} />,
+                  ]
                 })}
               </tbody>
             </table>
           </div>
 
           {!loading && filtered.length > 0 && (
-            <div className="border-t border-stone-100 px-5 py-3 flex items-center justify-between">
-              <span className="text-[11px] text-stone-400">
-                Showing {filtered.length} orders {liveData ? '· live data' : '· sample data'}
+            <div
+              className="px-5 py-3 flex items-center justify-between"
+              style={{ borderTop: '1px solid var(--border)' }}
+            >
+              <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Showing {filtered.length} orders {liveData ? '· live data' : ''}
               </span>
-              <button className="text-[11px] font-semibold text-teal-700 flex items-center gap-1 hover:underline">
+              <button
+                className="text-[11px] font-semibold flex items-center gap-1 transition-colors duration-150"
+                style={{ color: 'var(--primary)' }}
+              >
                 Export CSV <ArrowUpRight size={11} />
               </button>
             </div>

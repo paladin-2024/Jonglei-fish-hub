@@ -1,27 +1,25 @@
 import { useState, useMemo, useEffect } from 'react'
 import AppLayout from '../components/AppLayout'
-import { Truck, MapPin, Search, Circle, RefreshCw } from 'lucide-react'
+import { Truck, MapPin, Search, RefreshCw, ArrowRight, Map } from 'lucide-react'
 import api from '../api/axios'
 import ShipmentTrackingMap from '../components/ShipmentTrackingMap'
 
-const STATUS_CFG = {
-  'IN TRANSIT': { dot: 'bg-blue-500',   pill: 'bg-blue-50 text-blue-800 ring-blue-100'   },
-  'CONFIRMED':  { dot: 'bg-green-500',  pill: 'bg-green-50 text-green-800 ring-green-100' },
-  'PENDING':    { dot: 'bg-amber-500',  pill: 'bg-amber-50 text-amber-800 ring-amber-100' },
-  'CLEARED':    { dot: 'bg-teal-500',   pill: 'bg-teal-50 text-teal-800 ring-teal-100'   },
-  'FLAGGED':    { dot: 'bg-red-500',    pill: 'bg-red-50 text-red-800 ring-red-100'       },
+const CARD_S = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
 }
 
-const SAMPLE = [
-  { id: 'SHP-0041', fish: 'Nile Perch',      origin: 'Bor',       dest: 'Juba',    qty: 120,  price: 294000, status: 'IN TRANSIT', date: '2026-05-14' },
-  { id: 'SHP-0040', fish: 'Tilapia (Fresh)', origin: 'Panyagoor', dest: 'Bor',     qty: 45,   price: 81000,  status: 'CONFIRMED',  date: '2026-05-13' },
-  { id: 'SHP-0039', fish: 'Catfish',         origin: 'Twic East', dest: 'Juba',    qty: 200,  price: 240000, status: 'PENDING',    date: '2026-05-13' },
-  { id: 'SHP-0038', fish: 'Nile Perch (Smoked)', origin: 'Bor',   dest: 'Renk',   qty: 300,  price: 960000, status: 'CLEARED',    date: '2026-05-12' },
-  { id: 'SHP-0037', fish: 'Lungfish',        origin: 'Fangak',    dest: 'Malakal', qty: 80,   price: 128000, status: 'CLEARED',    date: '2026-05-10' },
-  { id: 'SHP-0036', fish: 'Tilapia',         origin: 'Bor',       dest: 'Wau',     qty: 60,   price: 108000, status: 'FLAGGED',    date: '2026-05-09' },
-  { id: 'SHP-0035', fish: 'Nile Perch',      origin: 'Malakal',   dest: 'Renk',    qty: 150,  price: 525000, status: 'IN TRANSIT', date: '2026-05-08' },
-  { id: 'SHP-0034', fish: 'Catfish',         origin: 'Pibor',     dest: 'Juba',    qty: 90,   price: 171000, status: 'CONFIRMED',  date: '2026-05-07' },
-]
+const STATUS_CFG = {
+  'IN TRANSIT': { color: '#60A5FA', bg: 'rgba(96,165,250,0.12)',   step: 2 },
+  'CONFIRMED':  { color: '#0AB5A3', bg: 'rgba(10,181,163,0.12)',  step: 1 },
+  'PENDING':    { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',   step: 0 },
+  'CLEARED':    { color: '#10B981', bg: 'rgba(16,185,129,0.12)',   step: 4 },
+  'FLAGGED':    { color: '#EF4444', bg: 'rgba(239,68,68,0.12)',    step: -1 },
+}
+
+const STEPS = ['Booked', 'Confirmed', 'In Transit', 'At Border', 'Cleared']
+
 
 const STATUSES = ['ALL', 'IN TRANSIT', 'CONFIRMED', 'PENDING', 'CLEARED', 'FLAGGED']
 
@@ -31,37 +29,150 @@ function normalizeShipment(j) {
   const order = j.order_detail ?? j.order ?? {}
   const listing = order.listing_detail ?? order.listing ?? {}
   return {
-    id:     j.id?.toString().toUpperCase().slice(0, 12) ?? j.id,
-    fish:   listing.species ?? j.cargo ?? '—',
-    origin: j.origin ?? j.pickup_location ?? '—',
-    dest:   j.destination ?? j.delivery_location ?? '—',
-    qty:    Number(j.quantity_kg ?? order.quantity_kg ?? 0),
-    price:  Number(j.total_price ?? order.total_price ?? 0),
-    status: (j.status ?? 'PENDING').replace('_', ' ').toUpperCase(),
-    date:   j.created_at
+    id:          j.id?.toString().toUpperCase().slice(0, 12) ?? j.id,
+    fish:        listing.species ?? j.cargo ?? '—',
+    origin:      j.origin ?? j.pickup_location ?? '—',
+    dest:        j.destination ?? j.delivery_location ?? '—',
+    qty:         Number(j.quantity_kg ?? order.quantity_kg ?? 0),
+    price:       Number(j.total_price ?? order.total_price ?? 0),
+    status:      (j.status ?? 'PENDING').replace('_', ' ').toUpperCase(),
+    date:        j.created_at
       ? new Date(j.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-      : j.date ?? '—',
+      : '—',
+    transporter: j.transporter_detail?.username ?? '—',
   }
 }
 
-function SkeletonRow() {
+function ProgressStepper({ status }) {
+  const cfg = STATUS_CFG[status] ?? STATUS_CFG['PENDING']
+  const step = cfg.step
+
+  if (step < 0) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full" style={{ background: cfg.color }} />
+        <span className="text-[11px] font-bold" style={{ color: cfg.color, fontFamily: 'JetBrains Mono' }}>
+          FLAGGED
+        </span>
+      </div>
+    )
+  }
+
   return (
-    <tr className="border-b border-stone-50">
-      {[...Array(7)].map((_, i) => (
-        <td key={i} className="px-5 py-4">
-          <div className="h-3 bg-stone-100 rounded animate-pulse" style={{ width: `${50 + (i % 3) * 20}%` }} />
-        </td>
-      ))}
-    </tr>
+    <div className="flex items-center gap-1 w-full">
+      {STEPS.map((label, i) => {
+        const done   = i <= step
+        const active = i === step
+        return (
+          <div key={label} className="flex items-center flex-1 min-w-0">
+            <div className="flex flex-col items-center gap-1" style={{ minWidth: 0 }}>
+              <div
+                className="w-2 h-2 rounded-full flex-shrink-0 transition-all duration-300"
+                style={{
+                  background: done ? cfg.color : 'var(--bg-glass)',
+                  border: `1px solid ${done ? cfg.color : 'var(--border)'}`,
+                  boxShadow: active ? `0 0 8px ${cfg.color}60` : 'none',
+                }}
+              />
+              <span
+                className="text-[9px] whitespace-nowrap truncate"
+                style={{ color: done ? cfg.color : 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}
+              >
+                {label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div
+                className="flex-1 h-[1px] mx-0.5 mb-3 transition-all duration-300"
+                style={{ background: i < step ? cfg.color : 'var(--border)' }}
+              />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ShipmentCard({ s, delay = 0 }) {
+  const cfg = STATUS_CFG[s.status] ?? STATUS_CFG['PENDING']
+  return (
+    <div
+      className="p-5 flex flex-col gap-4 transition-all duration-200 hover-glow animate-fade-up"
+      style={{ ...CARD_S, animationDelay: `${delay}ms` }}
+    >
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-muted)' }}>{s.id}</span>
+          <p className="text-[15px] font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>{s.fish}</p>
+          <p className="text-[12px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{s.transporter}</p>
+        </div>
+        <span
+          className="text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full flex-shrink-0 flex items-center gap-1.5"
+          style={{ color: cfg.color, background: cfg.bg }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.color }} />
+          {s.status}
+        </span>
+      </div>
+
+      {/* Route */}
+      <div className="flex items-center gap-2">
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+          style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)' }}
+        >
+          <MapPin size={11} style={{ color: 'var(--secondary)' }} />
+          <span className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)' }}>{s.origin}</span>
+        </div>
+        <ArrowRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+          style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)' }}
+        >
+          <MapPin size={11} style={{ color: 'var(--primary)' }} />
+          <span className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)' }}>{s.dest}</span>
+        </div>
+      </div>
+
+      {/* Progress stepper */}
+      <ProgressStepper status={s.status} />
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+        <div>
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>
+            {fmtSSP(s.price)}
+          </span>
+          <span className="ml-2 text-[11px]" style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+            · {s.qty} kg
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-muted)' }}>
+            {s.date}
+          </span>
+          <button
+            className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all duration-200"
+            style={{ background: 'var(--secondary-glow)', color: 'var(--secondary)', border: '1px solid rgba(10,181,163,0.2)' }}
+            onClick={() => {}}
+          >
+            <Map size={11} />
+            Track
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
 export default function Shipments() {
-  const [shipments, setShipments]     = useState(SAMPLE)
-  const [loading, setLoading]         = useState(true)
-  const [isLive, setIsLive]           = useState(false)
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [search, setSearch]           = useState('')
+  const [shipments, setShipments]      = useState([])
+  const [loading, setLoading]          = useState(true)
+  const [isLive, setIsLive]            = useState(false)
+  const [statusFilter, setStatusFilter]= useState('ALL')
+  const [search, setSearch]            = useState('')
 
   useEffect(() => {
     api.get('/transport/shipments/')
@@ -89,12 +200,15 @@ export default function Shipments() {
     })
   }, [shipments, statusFilter, search])
 
+  const inTransitCount = filtered.filter(s => s.status === 'IN TRANSIT').length
+
   return (
     <AppLayout title="Shipments" subtitle="Fish transport routes and delivery tracking">
-      <div className="max-w-[1200px] mx-auto space-y-5">
+      <div className="max-w-[1280px] mx-auto space-y-5">
 
-        {/* Filter bar */}
+        {/* Toolbar row */}
         <div className="flex flex-wrap items-center gap-3 animate-fade-up">
+
           {/* Status pills */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {STATUSES.map(s => {
@@ -104,16 +218,23 @@ export default function Shipments() {
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold
-                              uppercase tracking-wide transition-all duration-200 ease-spring outline-none
-                              focus-visible:ring-2 focus-visible:ring-teal-400
-                              ${active
-                                ? 'bg-teal-700 text-white shadow-md'
-                                : 'bg-white text-stone-500 border border-stone-200 hover:border-teal-300 hover:text-teal-700'
-                              }`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold
+                              uppercase tracking-wide transition-all duration-200 outline-none"
+                  style={{
+                    background: active
+                      ? (s === 'ALL' ? 'var(--primary)' : cfg?.bg ?? 'var(--primary-glow)')
+                      : 'var(--bg-glass)',
+                    color: active
+                      ? (s === 'ALL' ? 'var(--bg-deep)' : cfg?.color ?? 'var(--primary)')
+                      : 'var(--text-muted)',
+                    border: `1px solid ${active ? 'transparent' : 'var(--border)'}`,
+                  }}
                 >
                   {s !== 'ALL' && cfg && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-white/60' : cfg.dot}`} />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ background: active ? 'currentColor' : cfg.color }}
+                    />
                   )}
                   {s}
                 </button>
@@ -123,146 +244,93 @@ export default function Shipments() {
 
           {/* Search */}
           <div className="flex-1 min-w-[200px] relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
             <input
               type="text"
               placeholder="Search ID, fish, city…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 text-[13px] bg-white border border-stone-200 rounded-xl
-                         focus:outline-none focus:border-teal-400 transition-colors placeholder-stone-400"
+              className="w-full pl-8 pr-3 py-2 text-[13px] rounded-xl outline-none transition-all duration-200"
+              style={{
+                background: 'var(--bg-glass)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-primary)',
+                fontFamily: 'Outfit',
+              }}
+              onFocus={e => e.target.style.borderColor = 'rgba(10,181,163,0.4)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
             />
           </div>
-        </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl shadow-card overflow-hidden animate-fade-up stagger-1">
-          <div className="h-[3px]" style={{ background: '#1E5C8A' }} />
-
-          <div className="px-5 py-3.5 border-b border-stone-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Truck size={14} className="text-stone-400" strokeWidth={1.75} />
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
-                Shipment ledger
-              </p>
-              {isLive && (
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-lg ml-2">
-                  <RefreshCw size={10} strokeWidth={2.5} />
-                  LIVE
-                </div>
-              )}
-            </div>
-            <span className="font-mono text-[11px] text-stone-400">
-              <span className="font-semibold text-stone-700">{filtered.length}</span> records
-              {isLive ? ' · live data' : ' · sample data'}
-            </span>
-          </div>
-
-          {loading ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-stone-50 bg-stone-50/60">
-                    {['Shipment ID', 'Fish', 'Route', 'Quantity', 'Value', 'Status', 'Date'].map(h => (
-                      <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
-                </tbody>
-              </table>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-stone-300">
-              <Truck size={28} className="mb-3" strokeWidth={1.5} />
-              <p className="text-[13px] text-stone-400 font-medium">No shipments match your filters</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-stone-50 bg-stone-50/60">
-                    {['Shipment ID', 'Fish', 'Route', 'Quantity', 'Value', 'Status', 'Date'].map(h => (
-                      <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((s, i) => {
-                    const cfg = STATUS_CFG[s.status] ?? STATUS_CFG['PENDING']
-                    return (
-                      <tr
-                        key={s.id}
-                        className={`group hover:bg-teal-50/30 transition-colors
-                                    ${i < filtered.length - 1 ? 'border-b border-stone-50' : ''}`}
-                        style={{ animationDelay: `${i * 40}ms` }}
-                      >
-                        <td className="px-5 py-3.5">
-                          <span className="font-mono text-[12px] font-semibold text-stone-800">{s.id}</span>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="text-[13px] font-semibold text-stone-800">{s.fish}</span>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-1.5 text-[12px] text-stone-500">
-                            <MapPin size={11} className="text-teal-500 flex-shrink-0" />
-                            <span>{s.origin}</span>
-                            <span className="text-stone-300">→</span>
-                            <span>{s.dest}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="font-mono text-[12px] text-stone-700">{s.qty} kg</span>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="font-mono text-[12px] font-semibold text-stone-800">
-                            {fmtSSP(s.price)}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg ring-1 ${cfg.pill}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="font-mono text-[11px] text-stone-400">{s.date}</span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+          {isLive && (
+            <div
+              className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg"
+              style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--success)' }}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--success)' }} />
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: 'var(--success)' }} />
+              </span>
+              LIVE
             </div>
           )}
+
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-muted)' }}>
+            {filtered.length} shipments · {inTransitCount} in motion
+          </span>
         </div>
 
-        {/* Live tracking map */}
-        <div className="bg-white rounded-xl shadow-card overflow-hidden animate-fade-up stagger-2">
-          <div className="h-[3px]" style={{ background: '#1E5C8A' }} />
-          <div className="px-5 py-3.5 border-b border-stone-100 flex items-center justify-between">
+        {/* Cards grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="p-5 flex flex-col gap-4" style={CARD_S}>
+                <div className="shimmer h-5 w-24 rounded" />
+                <div className="shimmer h-8 w-40 rounded" />
+                <div className="shimmer h-6 w-full rounded" />
+                <div className="shimmer h-4 w-full rounded" />
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center py-20"
+            style={{ ...CARD_S, color: 'var(--text-muted)' }}
+          >
+            <Truck size={28} className="mb-3 opacity-40" strokeWidth={1.5} />
+            <p className="text-[13px] font-medium">No shipments match your filters</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map((s, i) => (
+              <ShipmentCard key={s.id} s={s} delay={i * 40} />
+            ))}
+          </div>
+        )}
+
+        {/* Map section */}
+        <div className="overflow-hidden animate-fade-up stagger-3" style={CARD_S}>
+          <div
+            className="px-5 py-4 flex items-center justify-between"
+            style={{ borderBottom: '1px solid var(--border)' }}
+          >
             <div className="flex items-center gap-2">
-              <MapPin size={14} className="text-stone-400" strokeWidth={1.75} />
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
-                Live route tracking
+              <MapPin size={14} style={{ color: 'var(--text-muted)' }} strokeWidth={1.75} />
+              <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                Live Route Tracking
               </p>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#60A5FA' }} />
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#60A5FA' }} />
               </span>
-              <span className="text-[10px] font-mono text-stone-400">
-                {filtered.filter(s => s.status === 'IN TRANSIT').length} in motion
+              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-muted)' }}>
+                {inTransitCount} in motion
               </span>
             </div>
           </div>
-          <div className="h-[480px]">
+          <div className="h-[420px]">
             <ShipmentTrackingMap shipments={filtered} />
           </div>
         </div>

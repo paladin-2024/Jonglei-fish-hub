@@ -68,7 +68,7 @@ class ApiService {
     return _handle(response);
   }
 
-  /// Upload a file as multipart/form-data alongside JSON fields.
+  /// Upload a file as multipart/form-data alongside JSON fields (named-parameter form).
   Future<dynamic> postMultipart(
     String path, {
     required File file,
@@ -81,6 +81,27 @@ class ApiService {
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
     request.fields.addAll(fields);
     request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    return _handle(response);
+  }
+
+  /// Upload fields and an optional photo as multipart/form-data (positional-fields form).
+  Future<dynamic> postMultipartFields(
+    String path,
+    Map<String, String> fields, {
+    File? photoFile,
+    String photoField = 'photo',
+  }) async {
+    final token = await _storage.getAccessToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+    final request = http.MultipartRequest('POST', uri);
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    request.fields.addAll(fields);
+    if (photoFile != null) {
+      request.files
+          .add(await http.MultipartFile.fromPath(photoField, photoFile.path));
+    }
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
     return _handle(response);

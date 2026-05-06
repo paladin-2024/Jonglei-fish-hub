@@ -29,8 +29,10 @@ class _BorderOfficialHomeScreenState extends State<BorderOfficialHomeScreen> {
     ];
 
     return Scaffold(
+      backgroundColor: AppColors.bgBase,
       body: IndexedStack(index: _tab, children: tabs),
       bottomNavigationBar: NavigationBar(
+        backgroundColor: AppColors.bgDeep,
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
@@ -119,164 +121,243 @@ class _BorderOfficialDashboardState extends State<_BorderOfficialDashboard> {
     final top = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: AppColors.surfaceLow,
-      body: CustomScrollView(
-        slivers: [
-          // ── Surface header ──────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Container(
-              color: AppColors.surface,
-              padding: EdgeInsets.fromLTRB(20, top + 16, 20, 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        user?.username.isNotEmpty == true
-                            ? user!.username[0].toUpperCase()
-                            : 'B',
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
+      backgroundColor: AppColors.bgBase,
+      body: AmbientBackground(
+        child: CustomScrollView(
+          slivers: [
+            // ── Cinema header ───────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppColors.bgDeep, AppColors.bgBase],
+                  ),
+                  border: Border(
+                      bottom: BorderSide(color: AppColors.border)),
+                ),
+                padding: EdgeInsets.fromLTRB(20, top + 16, 20, 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.dangerLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color:
+                                AppColors.danger.withValues(alpha: 0.3)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          user?.username.isNotEmpty == true
+                              ? user!.username[0].toUpperCase()
+                              : 'B',
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.danger,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('JONGLEI HUB',
+                              style: GoogleFonts.dmSerifDisplay(
+                                fontSize: 20,
+                                color: AppColors.primary,
+                                letterSpacing: -0.4,
+                              )),
+                          Text('Border Clearance Station',
+                              style: AppTextStyles.ui(12,
+                                  color: AppColors.textMuted)),
+                        ],
+                      ),
+                    ),
+                    Stack(
                       children: [
-                        Text(
-                          'CLEARANCE STATION',
-                          style: AppTextStyles.label(
-                            10,
-                            color: AppColors.onSurfaceVariant,
-                          ),
+                        IconButton(
+                          icon: const Icon(Icons.notifications_outlined),
+                          color: AppColors.textSecondary,
+                          onPressed: () {},
                         ),
-                        Text(
-                          user?.username ?? 'Officer',
-                          style: AppTextStyles.ui(
-                            18,
-                            weight: FontWeight.w800,
-                            color: AppColors.primary,
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.danger,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined),
-                        color: AppColors.onSurfaceVariant,
-                        onPressed: () {},
-                      ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.danger,
-                            shape: BoxShape.circle,
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Stat cards + activity ───────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('WELCOME BACK,',
+                            style: AppTextStyles.label(10,
+                                color: AppColors.textMuted)),
+                        const SizedBox(width: 6),
+                        Text(user?.username ?? 'Officer',
+                            style: AppTextStyles.label(10,
+                                color: AppColors.danger,
+                                weight: FontWeight.w800)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Three stat cards: Pending=amber, Cleared=teal, Flagged=red
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _BorderStatCard(
+                            label: 'PENDING',
+                            value: _loading ? '—' : '$_pending',
+                            color: AppColors.warning,
+                            icon: Icons.pending_actions_outlined,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Stat cards + activity ───────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Full-width primary stat
-                  LedgerStatCard(
-                    label: 'Pending Clearances',
-                    value: _loading ? '…' : '$_pending',
-                    accentColor: AppColors.secondary,
-                    icon: Icons.pending_actions_outlined,
-                    wide: true,
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Two-column row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: LedgerStatCard(
-                          label: 'Cleared Today',
-                          value: _loading ? '…' : '$_clearedToday',
-                          accentColor: AppColors.success,
-                          icon: Icons.check_circle_outline_rounded,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _BorderStatCard(
+                            label: 'CLEARED',
+                            value: _loading ? '—' : '$_clearedToday',
+                            color: AppColors.primary,
+                            icon: Icons.check_circle_outline_rounded,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: LedgerStatCard(
-                          label: 'Flagged',
-                          value: _loading ? '…' : '$_flagged',
-                          accentColor: AppColors.danger,
-                          icon: Icons.flag_outlined,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _BorderStatCard(
+                            label: 'FLAGGED',
+                            value: _loading ? '—' : '$_flagged',
+                            color: AppColors.danger,
+                            icon: Icons.flag_outlined,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // Section header
-                  Text(
-                    'Recent Activity',
-                    style: AppTextStyles.ui(15, weight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Clearance log list
-                  if (!_loading && _logs.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Text(
-                        'No recent activity',
-                        style: AppTextStyles.ui(13,
-                            color: AppColors.onSurfaceFaint),
-                      ),
-                    )
-                  else
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppRadius.card),
-                      ),
-                      child: Column(
-                        children: _logs.asMap().entries.map((e) {
-                          final isLast = e.key == _logs.length - 1;
-                          return _ClearanceLogTile(
-                              log: e.value, isLast: isLast);
-                        }).toList(),
-                      ),
+                      ],
                     ),
 
-                  const SizedBox(height: 16),
-                ],
+                    const SizedBox(height: 28),
+
+                    Text(
+                      'Recent Activity',
+                      style: AppTextStyles.ui(15,
+                          weight: FontWeight.w700,
+                          color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 10),
+
+                    if (!_loading && _logs.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.inbox_rounded,
+                                size: 40, color: AppColors.textMuted),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No recent activity',
+                              style: AppTextStyles.ui(13,
+                                  color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.bgElevated,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.card),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          children: _logs.asMap().entries.map((e) {
+                            final isLast = e.key == _logs.length - 1;
+                            return _ClearanceLogTile(
+                                log: e.value, isLast: isLast);
+                          }).toList(),
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Border stat card ─────────────────────────────────────────────────────────
+class _BorderStatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+  const _BorderStatCard(
+      {required this.label,
+      required this.value,
+      required this.color,
+      required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.bgElevated,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: color),
           ),
+          const SizedBox(height: 8),
+          Text(value,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: color,
+                height: 1.0,
+              )),
+          const SizedBox(height: 4),
+          Text(label,
+              style:
+                  AppTextStyles.label(8, color: AppColors.textMuted)),
         ],
       ),
     );
@@ -299,6 +380,18 @@ class _ClearanceLogTile extends StatelessWidget {
   final bool isLast;
   const _ClearanceLogTile({required this.log, required this.isLast});
 
+  Color get _statusColor {
+    switch (log.status) {
+      case 'CLEARED':
+        return AppColors.success;
+      case 'FLAGGED':
+      case 'HELD':
+        return AppColors.danger;
+      default:
+        return AppColors.warning;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -307,18 +400,17 @@ class _ClearanceLogTile extends StatelessWidget {
         border: isLast
             ? null
             : const Border(
-                bottom: BorderSide(color: AppColors.surfaceLow, width: 1),
+                bottom: BorderSide(color: AppColors.border, width: 1),
               ),
       ),
       child: Row(
         children: [
-          // Fish icon box
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: AppColors.surfaceLow,
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.primaryGlow,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.set_meal_rounded,
@@ -327,28 +419,21 @@ class _ClearanceLogTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Main content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Shipment ID in JetBrains Mono
                 Text(
                   log.shipmentId,
-                  style: AppTextStyles.data(
-                    13,
-                    weight: FontWeight.w700,
-                    color: AppColors.onSurface,
-                  ),
+                  style: AppTextStyles.data(13,
+                      weight: FontWeight.w700,
+                      color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   log.description,
-                  style: AppTextStyles.ui(
-                    12,
-                    color: AppColors.onSurfaceVariant,
-                  ),
+                  style: AppTextStyles.ui(12,
+                      color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -356,15 +441,13 @@ class _ClearanceLogTile extends StatelessWidget {
                     const Icon(
                       Icons.swap_horiz_rounded,
                       size: 13,
-                      color: AppColors.onSurfaceFaint,
+                      color: AppColors.textMuted,
                     ),
                     const SizedBox(width: 3),
                     Text(
                       log.route,
-                      style: AppTextStyles.ui(
-                        11,
-                        color: AppColors.onSurfaceFaint,
-                      ),
+                      style: AppTextStyles.ui(11,
+                          color: AppColors.textMuted),
                     ),
                   ],
                 ),
@@ -372,7 +455,26 @@ class _ClearanceLogTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          StatusBadge.fromString(log.status),
+          // Status pill
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _statusColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                  color: _statusColor.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              log.status,
+              style: GoogleFonts.outfit(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: _statusColor,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -491,8 +593,9 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Shipment $label successfully'),
-            backgroundColor:
-                action == 'scan_clear' ? AppColors.success : AppColors.warning,
+            backgroundColor: action == 'scan_clear'
+                ? AppColors.success
+                : AppColors.warning,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -516,13 +619,21 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surfaceLow,
+      backgroundColor: AppColors.bgBase,
       body: CustomScrollView(
         slivers: [
           // ── Header ──────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
-              color: AppColors.surface,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.bgDeep, AppColors.bgBase],
+                ),
+                border: Border(
+                    bottom: BorderSide(color: AppColors.border)),
+              ),
               padding: EdgeInsets.fromLTRB(
                   18, MediaQuery.of(context).padding.top + 16, 18, 14),
               child: Row(
@@ -532,11 +643,14 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Clearance Queue',
-                            style:
-                                AppTextStyles.ui(18, weight: FontWeight.w800)),
+                            style: GoogleFonts.dmSerifDisplay(
+                              fontSize: 22,
+                              color: AppColors.primary,
+                              letterSpacing: -0.4,
+                            )),
                         Text('PENDING SHIPMENTS',
                             style: AppTextStyles.label(10,
-                                color: AppColors.onSurfaceVariant)),
+                                color: AppColors.textMuted)),
                       ],
                     ),
                   ),
@@ -546,6 +660,8 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
                     decoration: BoxDecoration(
                       color: AppColors.warningLight,
                       borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.3)),
                     ),
                     child: Text('${_clearances.length} PENDING',
                         style: AppTextStyles.label(10,
@@ -555,7 +671,7 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.refresh_rounded,
-                        size: 20, color: AppColors.onSurfaceVariant),
+                        size: 20, color: AppColors.textSecondary),
                     onPressed: _load,
                   ),
                 ],
@@ -581,15 +697,15 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
                 child: Column(
                   children: [
                     const Icon(Icons.inbox_rounded,
-                        size: 48, color: AppColors.onSurfaceFaint),
+                        size: 48, color: AppColors.textMuted),
                     const SizedBox(height: 12),
                     Text('Queue is clear',
                         style: AppTextStyles.ui(15,
-                            color: AppColors.onSurfaceVariant)),
+                            color: AppColors.textSecondary)),
                     const SizedBox(height: 6),
                     Text('No pending clearances at this time',
                         style: AppTextStyles.ui(12,
-                            color: AppColors.onSurfaceFaint)),
+                            color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -633,14 +749,14 @@ class _ClearanceCard extends StatelessWidget {
   Color get _accentColor {
     switch (clearance.status) {
       case 'PENDING':
-        return AppColors.secondary;
+        return AppColors.warning;
       case 'CLEARED':
-        return AppColors.success;
+        return AppColors.primary;
       case 'HELD':
       case 'FLAGGED':
         return AppColors.danger;
       default:
-        return AppColors.onSurfaceVariant;
+        return AppColors.textSecondary;
     }
   }
 
@@ -649,15 +765,17 @@ class _ClearanceCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.bgElevated,
         borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
           Container(
             height: 3,
             decoration: BoxDecoration(
-              color: _accentColor,
+              gradient: LinearGradient(
+                  colors: [_accentColor, _accentColor.withValues(alpha: 0.3)]),
               borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(AppRadius.card)),
             ),
@@ -675,11 +793,12 @@ class _ClearanceCard extends StatelessWidget {
                         children: [
                           Text(clearance.shipmentId,
                               style: AppTextStyles.data(13,
-                                  weight: FontWeight.w700)),
+                                  weight: FontWeight.w700,
+                                  color: AppColors.textPrimary)),
                           const SizedBox(height: 2),
                           Text(clearance.description,
                               style: AppTextStyles.ui(12,
-                                  color: AppColors.onSurfaceVariant)),
+                                  color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -690,16 +809,16 @@ class _ClearanceCard extends StatelessWidget {
                 Row(
                   children: [
                     const Icon(Icons.swap_horiz_rounded,
-                        size: 13, color: AppColors.onSurfaceFaint),
+                        size: 13, color: AppColors.textMuted),
                     const SizedBox(width: 4),
                     Text(clearance.route,
                         style: AppTextStyles.ui(11,
-                            color: AppColors.onSurfaceFaint)),
+                            color: AppColors.textMuted)),
                     const Spacer(),
                     if (clearance.timestamp.isNotEmpty)
                       Text(clearance.timestamp,
                           style: AppTextStyles.data(10,
-                              color: AppColors.onSurfaceFaint)),
+                              color: AppColors.textMuted)),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -707,7 +826,7 @@ class _ClearanceCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: 38,
+                        height: 40,
                         child: ElevatedButton(
                           onPressed: isActing ? null : onClear,
                           style: ElevatedButton.styleFrom(
@@ -722,7 +841,8 @@ class _ClearanceCard extends StatelessWidget {
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
+                                      strokeWidth: 2,
+                                      color: Colors.white))
                               : Text('CLEAR',
                                   style: AppTextStyles.label(12,
                                       color: Colors.white,
@@ -733,7 +853,7 @@ class _ClearanceCard extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: SizedBox(
-                        height: 38,
+                        height: 40,
                         child: ElevatedButton(
                           onPressed: isActing ? null : onHold,
                           style: ElevatedButton.styleFrom(
@@ -748,7 +868,8 @@ class _ClearanceCard extends StatelessWidget {
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
+                                      strokeWidth: 2,
+                                      color: Colors.white))
                               : Text('HOLD',
                                   style: AppTextStyles.label(12,
                                       color: Colors.white,
@@ -773,17 +894,18 @@ class _ClearanceSkeleton extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.bgElevated,
         borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
           Container(
             height: 3,
             decoration: const BoxDecoration(
-              color: AppColors.surfaceHigh,
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+              color: AppColors.surfaceHighest,
+              borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AppRadius.card)),
             ),
           ),
           Padding(
@@ -797,36 +919,46 @@ class _ClearanceSkeleton extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                            height: 14, width: 100, color: AppColors.surfaceHigh),
+                            height: 14,
+                            width: 100,
+                            color: AppColors.surfaceHighest),
                         const SizedBox(height: 4),
                         Container(
-                            height: 11, width: 140, color: AppColors.surfaceHighest),
+                            height: 11,
+                            width: 140,
+                            color: AppColors.surfaceHighest),
                       ],
                     ),
                     const Spacer(),
                     Container(
-                        height: 20, width: 60, color: AppColors.surfaceHigh),
+                        height: 20,
+                        width: 60,
+                        color: AppColors.surfaceHighest),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Container(
-                    height: 11, width: 180, color: AppColors.surfaceHighest),
+                    height: 11,
+                    width: 180,
+                    color: AppColors.surfaceHighest),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                         child: Container(
-                            height: 38,
+                            height: 40,
                             decoration: BoxDecoration(
-                                color: AppColors.surfaceHigh,
-                                borderRadius: BorderRadius.circular(8)))),
+                                color: AppColors.surfaceHighest,
+                                borderRadius:
+                                    BorderRadius.circular(8)))),
                     const SizedBox(width: 10),
                     Expanded(
                         child: Container(
-                            height: 38,
+                            height: 40,
                             decoration: BoxDecoration(
-                                color: AppColors.surfaceHigh,
-                                borderRadius: BorderRadius.circular(8)))),
+                                color: AppColors.surfaceHighest,
+                                borderRadius:
+                                    BorderRadius.circular(8)))),
                   ],
                 ),
               ],
@@ -883,7 +1015,6 @@ class _ScanTabState extends State<_ScanTab>
     final barcode = capture.barcodes.firstOrNull;
     if (barcode == null) return;
     final raw = barcode.rawValue ?? '';
-    // Parse JONGLEI:CLEARANCE:{uuid}
     String? clearanceId;
     if (raw.startsWith('JONGLEI:CLEARANCE:')) {
       clearanceId = raw.substring('JONGLEI:CLEARANCE:'.length).trim();
@@ -897,14 +1028,12 @@ class _ScanTabState extends State<_ScanTab>
   }
 
   Future<void> _handleClearanceId(String clearanceId) async {
-    // Fetch clearance details
     Map<String, dynamic>? details;
     try {
       final api = context.read<AuthProvider>().api;
-      details = await api.get('/clearance/$clearanceId/') as Map<String, dynamic>;
-    } catch (_) {
-      // No details available — proceed with ID only
-    }
+      details = await api.get('/clearance/$clearanceId/')
+          as Map<String, dynamic>;
+    } catch (_) {}
     if (!mounted) return;
     _showClearanceSheet(clearanceId, details);
   }
@@ -916,16 +1045,17 @@ class _ScanTabState extends State<_ScanTab>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        decoration: BoxDecoration(
+          color: AppColors.bgElevated,
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          border: const Border(top: BorderSide(color: AppColors.border)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle bar
             Center(
               child: Container(
                 width: 40,
@@ -938,24 +1068,26 @@ class _ScanTabState extends State<_ScanTab>
             ),
             const SizedBox(height: 16),
             Text('Clearance Confirmation',
-                style: AppTextStyles.ui(17, weight: FontWeight.w800)),
+                style: GoogleFonts.dmSerifDisplay(
+                  fontSize: 20,
+                  color: AppColors.primary,
+                  letterSpacing: -0.4,
+                )),
             const SizedBox(height: 4),
             Text('Review details before clearing',
-                style: AppTextStyles.ui(12, color: AppColors.onSurfaceVariant)),
+                style: AppTextStyles.ui(12,
+                    color: AppColors.textSecondary)),
             const SizedBox(height: 16),
-            // Details card
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLow,
+                color: AppColors.bgBase,
                 borderRadius: BorderRadius.circular(AppRadius.card),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 children: [
-                  _SheetRow(
-                    label: 'Clearance ID',
-                    value: clearanceId,
-                  ),
+                  _SheetRow(label: 'Clearance ID', value: clearanceId),
                   if (details != null) ...[
                     const SizedBox(height: 8),
                     _SheetRow(
@@ -993,13 +1125,12 @@ class _ScanTabState extends State<_ScanTab>
               children: [
                 Expanded(
                   child: SizedBox(
-                    height: 48,
+                    height: 50,
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(ctx).pop(),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.onSurfaceVariant,
-                        side: const BorderSide(
-                            color: AppColors.surfaceHighest, width: 1.5),
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                             borderRadius:
                                 BorderRadius.circular(AppRadius.md)),
@@ -1007,7 +1138,7 @@ class _ScanTabState extends State<_ScanTab>
                       child: Text('CANCEL',
                           style: AppTextStyles.ui(13,
                               weight: FontWeight.w700,
-                              color: AppColors.onSurfaceVariant)),
+                              color: AppColors.textSecondary)),
                     ),
                   ),
                 ),
@@ -1015,7 +1146,7 @@ class _ScanTabState extends State<_ScanTab>
                 Expanded(
                   flex: 2,
                   child: SizedBox(
-                    height: 48,
+                    height: 50,
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         Navigator.of(ctx).pop();
@@ -1037,8 +1168,7 @@ class _ScanTabState extends State<_ScanTab>
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content:
-                                    Text('Clearance failed: $e'),
+                                content: Text('Clearance failed: $e'),
                                 backgroundColor: AppColors.danger,
                                 behavior: SnackBarBehavior.floating,
                               ),
@@ -1076,13 +1206,14 @@ class _ScanTabState extends State<_ScanTab>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.bgElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         title: Text(
           'Enter Clearance ID',
-          style: AppTextStyles.ui(16, weight: FontWeight.w700),
+          style: GoogleFonts.dmSerifDisplay(
+              fontSize: 18, color: AppColors.primary),
         ),
         content: Form(
           key: formKey,
@@ -1095,7 +1226,7 @@ class _ScanTabState extends State<_ScanTab>
               hintText: 'e.g. CLR-0041',
               prefixIcon: Icon(
                 Icons.tag_rounded,
-                color: AppColors.onSurfaceFaint,
+                color: AppColors.textMuted,
                 size: 18,
               ),
             ),
@@ -1108,11 +1239,9 @@ class _ScanTabState extends State<_ScanTab>
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'CANCEL',
-              style: AppTextStyles.ui(
-                13,
-                weight: FontWeight.w600,
-                color: AppColors.onSurfaceVariant,
-              ),
+              style: AppTextStyles.ui(13,
+                  weight: FontWeight.w600,
+                  color: AppColors.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -1124,8 +1253,8 @@ class _ScanTabState extends State<_ScanTab>
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.secondary,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.bgDeep,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.md),
@@ -1133,12 +1262,10 @@ class _ScanTabState extends State<_ScanTab>
             ),
             child: Text(
               'LOOKUP',
-              style: AppTextStyles.ui(
-                13,
-                weight: FontWeight.w800,
-                color: Colors.white,
-                letterSpacing: 0.5,
-              ),
+              style: AppTextStyles.ui(13,
+                  weight: FontWeight.w800,
+                  color: AppColors.bgDeep,
+                  letterSpacing: 0.5),
             ),
           ),
         ],
@@ -1151,7 +1278,7 @@ class _ScanTabState extends State<_ScanTab>
     const viewfinderSize = 260.0;
 
     return Scaffold(
-      backgroundColor: Colors.black87,
+      backgroundColor: AppColors.bgDeep,
       body: SafeArea(
         child: Stack(
           children: [
@@ -1167,23 +1294,27 @@ class _ScanTabState extends State<_ScanTab>
             Column(
               children: [
                 // Top bar
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 16),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                        bottom: BorderSide(color: AppColors.border)),
+                  ),
                   child: Row(
                     children: [
                       Text(
                         'SCAN QR CODE',
                         style: AppTextStyles.label(
                           12,
-                          color: Colors.white70,
-                          weight: FontWeight.w700,
+                          color: AppColors.primary,
+                          weight: FontWeight.w800,
                         ),
                       ),
                       const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.flash_on_outlined,
-                            color: Colors.white70),
+                            color: AppColors.textSecondary),
                         onPressed: () => _scannerCtrl.toggleTorch(),
                       ),
                     ],
@@ -1196,7 +1327,6 @@ class _ScanTabState extends State<_ScanTab>
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Dimming overlay (only when camera NOT active)
                     if (!_cameraActive)
                       SizedBox(
                         width: viewfinderSize + 80,
@@ -1206,31 +1336,31 @@ class _ScanTabState extends State<_ScanTab>
                         ),
                       ),
 
-                    // White-border square
+                    // Amber viewfinder border
                     Container(
                       width: viewfinderSize,
                       height: viewfinderSize,
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.35),
+                          color: AppColors.primary.withValues(alpha: 0.25),
                           width: 1,
                         ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
 
-                    // Animated corner brackets (on top)
+                    // Amber corner brackets
                     SizedBox(
                       width: viewfinderSize,
                       height: viewfinderSize,
                       child: CustomPaint(
                         painter: _CornerBracketsPainter(
-                          color: AppColors.secondary,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
 
-                    // Animated scan line (on top)
+                    // Animated amber scan line
                     AnimatedBuilder(
                       animation: _lineAnim,
                       builder: (context, child) {
@@ -1251,7 +1381,7 @@ class _ScanTabState extends State<_ScanTab>
                                     gradient: LinearGradient(
                                       colors: [
                                         Colors.transparent,
-                                        AppColors.secondary
+                                        AppColors.primary
                                             .withValues(alpha: 0.9),
                                         Colors.transparent,
                                       ],
@@ -1265,7 +1395,6 @@ class _ScanTabState extends State<_ScanTab>
                       },
                     ),
 
-                    // Scanning indicator overlay
                     if (_scanning)
                       Container(
                         width: viewfinderSize,
@@ -1273,7 +1402,7 @@ class _ScanTabState extends State<_ScanTab>
                         color: Colors.black38,
                         child: const Center(
                           child: CircularProgressIndicator(
-                              color: AppColors.secondary),
+                              color: AppColors.primary),
                         ),
                       ),
                   ],
@@ -1281,18 +1410,17 @@ class _ScanTabState extends State<_ScanTab>
 
                 const Spacer(),
 
-                // ── Labels and buttons ───────────────────────────────────────
+                // ── Buttons ──────────────────────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 20),
+                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 24),
                   child: Column(
                     children: [
                       Text(
                         'SCAN SHIPMENT QR',
-                        style: AppTextStyles.ui(
-                          18,
-                          weight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 1.2,
+                        style: GoogleFonts.dmSerifDisplay(
+                          fontSize: 22,
+                          color: AppColors.primary,
+                          letterSpacing: -0.4,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -1300,23 +1428,21 @@ class _ScanTabState extends State<_ScanTab>
                         _cameraActive
                             ? 'Point camera at QR code'
                             : 'Align code within the frame',
-                        style: AppTextStyles.ui(
-                          13,
-                          color: Colors.white54,
-                        ),
+                        style: AppTextStyles.ui(13,
+                            color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 28),
 
-                      // Manual entry button
+                      // Manual entry
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: OutlinedButton(
                           onPressed: _showManualEntry,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
+                            foregroundColor: AppColors.textPrimary,
                             side: const BorderSide(
-                                color: Colors.white54, width: 1.5),
+                                color: AppColors.border, width: 1.5),
                             shape: RoundedRectangleBorder(
                               borderRadius:
                                   BorderRadius.circular(AppRadius.md),
@@ -1324,18 +1450,16 @@ class _ScanTabState extends State<_ScanTab>
                           ),
                           child: Text(
                             'ENTER CODE MANUALLY',
-                            style: AppTextStyles.ui(
-                              13,
-                              weight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 0.8,
-                            ),
+                            style: AppTextStyles.ui(13,
+                                weight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                                letterSpacing: 0.8),
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
 
-                      // Scan Now / Stop button
+                      // Scan Now / Stop — amber
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -1344,8 +1468,8 @@ class _ScanTabState extends State<_ScanTab>
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _cameraActive
                                 ? AppColors.danger
-                                : AppColors.secondary,
-                            foregroundColor: Colors.white,
+                                : AppColors.primary,
+                            foregroundColor: AppColors.bgDeep,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius:
@@ -1354,12 +1478,10 @@ class _ScanTabState extends State<_ScanTab>
                           ),
                           child: Text(
                             _cameraActive ? 'STOP SCANNING' : 'SCAN NOW',
-                            style: AppTextStyles.ui(
-                              14,
-                              weight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: 1.2,
-                            ),
+                            style: AppTextStyles.ui(14,
+                                weight: FontWeight.w800,
+                                color: AppColors.bgDeep,
+                                letterSpacing: 1.2),
                           ),
                         ),
                       ),
@@ -1376,7 +1498,7 @@ class _ScanTabState extends State<_ScanTab>
   }
 }
 
-// ─── Helper widget for clearance bottom sheet ─────────────────────────────────
+// ─── Helper widget ────────────────────────────────────────────────────────────
 class _SheetRow extends StatelessWidget {
   final String label;
   final String value;
@@ -1390,11 +1512,14 @@ class _SheetRow extends StatelessWidget {
         SizedBox(
           width: 90,
           child: Text('$label:',
-              style: AppTextStyles.ui(12, color: AppColors.onSurfaceVariant)),
+              style:
+                  AppTextStyles.ui(12, color: AppColors.textSecondary)),
         ),
         Expanded(
           child: Text(value,
-              style: AppTextStyles.data(12, weight: FontWeight.w600),
+              style: AppTextStyles.data(12,
+                  weight: FontWeight.w600,
+                  color: AppColors.primary),
               overflow: TextOverflow.ellipsis),
         ),
       ],
@@ -1402,7 +1527,7 @@ class _SheetRow extends StatelessWidget {
   }
 }
 
-// ─── Corner brackets painter ─────────────────────────────────────────────────
+// ─── Corner brackets painter ──────────────────────────────────────────────────
 class _CornerBracketsPainter extends CustomPainter {
   final Color color;
   const _CornerBracketsPainter({required this.color});
@@ -1455,7 +1580,7 @@ class _CornerBracketsPainter extends CustomPainter {
   bool shouldRepaint(_CornerBracketsPainter old) => old.color != color;
 }
 
-// ─── Dim overlay painter ─────────────────────────────────────────────────────
+// ─── Dim overlay painter ──────────────────────────────────────────────────────
 class _DimOverlayPainter extends CustomPainter {
   final double clearSize;
   const _DimOverlayPainter(this.clearSize);
@@ -1477,8 +1602,8 @@ class _DimOverlayPainter extends CustomPainter {
 
     final combined =
         Path.combine(PathOperation.difference, outerPath, innerPath);
-    canvas.drawPath(
-        combined, Paint()..color = Colors.black.withValues(alpha: 0.55));
+    canvas.drawPath(combined,
+        Paint()..color = Colors.black.withValues(alpha: 0.65));
   }
 
   @override

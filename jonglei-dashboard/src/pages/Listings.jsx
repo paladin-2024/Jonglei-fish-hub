@@ -3,44 +3,41 @@ import AppLayout from '../components/AppLayout'
 import {
   Fish, Search, Filter, TrendingUp,
   ChevronDown, X, Eye, Trash2, Star,
-  MapPin, Package, Calendar, ArrowUpRight, RefreshCw,
+  MapPin, Package, Calendar, ArrowUpRight,
 } from 'lucide-react'
 import api from '../api/axios'
+
+const CARD_S = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+}
 
 function normalizeListing(l) {
   const seller = l.seller_detail ?? l.seller ?? {}
   return {
-    id:       l.id?.toString().toUpperCase().slice(-8) ?? l.id,
-    fish:     l.species ?? '—',
-    seller:   typeof seller === 'object' ? (seller.username ?? seller.phone_number ?? '—') : seller,
-    location: l.location ?? '—',
-    qty:      Number(l.quantity_kg ?? 0),
-    price:    Number(l.price_ssp   ?? 0),
-    unit:     l.unit ?? 'KG',
-    status:   l.status ?? 'DRAFT',
-    date:     l.created_at ? new Date(l.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—',
-    photo:    l.photo_url || null,
+    id:           l.id?.toString().toUpperCase().slice(-8) ?? l.id,
+    fish:         l.species ?? '—',
+    seller:       typeof seller === 'object' ? (seller.username ?? seller.phone_number ?? '—') : seller,
+    location:     l.location ?? '—',
+    qty:          Number(l.quantity_kg ?? 0),
+    price:        Number(l.price_ssp ?? 0),
+    unit:         l.unit ?? 'KG',
+    status:       l.status ?? 'DRAFT',
+    date:         l.created_at
+      ? new Date(l.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      : '—',
+    photo:        l.photo_url || null,
+    avg_rating:   typeof seller === 'object' ? (seller.avg_rating ?? 0) : 0,
+    rating_count: typeof seller === 'object' ? (seller.rating_count ?? 0) : 0,
   }
 }
 
-const LISTINGS = [
-  { id: 'LST-0051', fish: 'Nile Perch',          seller: 'B. Deng (Bor)',       location: 'Bor',       qty: 250, price: 2450, unit: 'KG',   status: 'ACTIVE',  date: '02 May 2026', photo: null },
-  { id: 'LST-0050', fish: 'Tilapia (Fresh)',      seller: 'Panyagoor Co-op',     location: 'Panyagoor', qty: 80,  price: 1800, unit: 'KG',   status: 'ACTIVE',  date: '02 May 2026', photo: null },
-  { id: 'LST-0049', fish: 'Catfish',              seller: 'N. Dau (Twic East)',  location: 'Twic East', qty: 300, price: 2100, unit: 'KG',   status: 'DRAFT',   date: '01 May 2026', photo: null },
-  { id: 'LST-0048', fish: 'Nile Perch (Smoked)', seller: 'B. Deng (Bor)',       location: 'Bor',       qty: 180, price: 3200, unit: 'KG',   status: 'SOLD',    date: '30 Apr 2026', photo: null },
-  { id: 'LST-0047', fish: 'Lungfish',             seller: 'Fangak Hub',          location: 'Fangak',    qty: 60,  price: 1600, unit: 'KG',   status: 'ACTIVE',  date: '29 Apr 2026', photo: null },
-  { id: 'LST-0046', fish: 'Tilapia (Smoked)',     seller: 'K. Thon (Renk)',      location: 'Renk',      qty: 120, price: 2100, unit: 'KG',   status: 'ACTIVE',  date: '28 Apr 2026', photo: null },
-  { id: 'LST-0045', fish: 'Nile Perch',           seller: 'Bor Fisheries',       location: 'Bor',       qty: 500, price: 2350, unit: 'KG',   status: 'REMOVED', date: '27 Apr 2026', photo: null },
-  { id: 'LST-0044', fish: 'Catfish',              seller: 'T. East Traders',     location: 'Twic East', qty: 200, price: 2000, unit: 'KG',   status: 'DRAFT',   date: '26 Apr 2026', photo: null },
-  { id: 'LST-0043', fish: 'Tilapia (Fresh)',      seller: 'P. Chol (Panyagoor)', location: 'Panyagoor', qty: 40,  price: 1750, unit: 'KG',   status: 'SOLD',    date: '25 Apr 2026', photo: null },
-  { id: 'LST-0042', fish: 'Nile Perch (Smoked)', seller: 'B. Deng (Bor)',       location: 'Bor',       qty: 90,  price: 3100, unit: 'CRATE', status: 'ACTIVE',  date: '24 Apr 2026', photo: null },
-]
-
 const STATUS_STYLES = {
-  ACTIVE:  { dot: 'bg-teal-500',  badge: 'text-teal-700 bg-teal-50'   },
-  DRAFT:   { dot: 'bg-amber-400', badge: 'text-amber-700 bg-amber-50' },
-  SOLD:    { dot: 'bg-stone-400', badge: 'text-stone-600 bg-stone-100' },
-  REMOVED: { dot: 'bg-red-400',   badge: 'text-red-700 bg-red-50'     },
+  ACTIVE:  { color: 'var(--primary)',    bg: 'var(--primary-glow)'        },
+  DRAFT:   { color: 'var(--secondary)',  bg: 'rgba(245,158,11,0.12)'      },
+  SOLD:    { color: 'var(--text-muted)', bg: 'rgba(71,85,105,0.18)'       },
+  REMOVED: { color: 'var(--danger)',     bg: 'rgba(239,68,68,0.12)'       },
 }
 
 const FILTERS = ['ALL', 'ACTIVE', 'DRAFT', 'SOLD', 'REMOVED']
@@ -56,37 +53,66 @@ const COLS = [
   { col: 'date',     label: 'LISTED'     },
 ]
 
-const KPI_ITEMS = [
-  { label: 'TOTAL LISTINGS', val: () => LISTINGS.length,                                       bar: '#005440' },
-  { label: 'ACTIVE',         val: () => LISTINGS.filter(l => l.status === 'ACTIVE').length,     bar: '#0F766E' },
-  { label: 'SOLD OUT',       val: () => LISTINGS.filter(l => l.status === 'SOLD').length,       bar: '#6B7280' },
-  { label: 'ACTIVE VALUE',   val: () => {
-    const total = LISTINGS.filter(l => l.status === 'ACTIVE').reduce((s, l) => s + (l.qty * l.price), 0)
-    return 'SSP ' + total.toLocaleString()
-  }, bar: '#B45309' },
-]
+const SPECIES_COLORS = {
+  'Nile Perch': '#0F766E',
+  'Tilapia':    '#1E5C8A',
+  'Catfish':    '#6B4226',
+  'Lungfish':   '#4A7C59',
+  'Smoked':     '#92400E',
+}
 
 function fmtSSP(n) { return 'SSP ' + n.toLocaleString() }
 
 function SortChevron({ active, dir }) {
   if (!active) return null
-  return <ChevronDown size={11} className={`inline ml-0.5 transition-transform duration-150 ${dir === 'asc' ? 'rotate-180' : ''}`} />
+  return (
+    <ChevronDown
+      size={11}
+      className={`inline ml-0.5 transition-transform duration-150 ${dir === 'asc' ? 'rotate-180' : ''}`}
+    />
+  )
 }
 
-function SpeciesIcon({ species }) {
-  const colors = {
-    'Nile Perch': '#0F766E', 'Tilapia': '#1E5C8A', 'Catfish': '#6B4226',
-    'Lungfish': '#4A7C59', 'Smoked': '#92400E',
+function SpeciesAvatar({ species, photo }) {
+  if (photo) {
+    return (
+      <img
+        src={photo}
+        className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+        alt=""
+      />
+    )
   }
-  const key = Object.keys(colors).find(k => species.includes(k)) ?? 'Nile Perch'
-  const color = colors[key]
-  const letter = species[0]
+  const key = Object.keys(SPECIES_COLORS).find(k => species.includes(k)) ?? 'Nile Perch'
+  const color = SPECIES_COLORS[key]
   return (
     <div
-      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[11px] font-bold"
-      style={{ backgroundColor: color + '20', color }}
+      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-[12px] font-bold"
+      style={{ background: color + '22', color }}
     >
-      {letter}
+      {species[0]}
+    </div>
+  )
+}
+
+function StarRating({ value, count }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(i => (
+        <span
+          key={i}
+          style={{
+            color: i <= Math.round(value || 0) ? '#F59E0B' : 'var(--border)',
+            fontSize: 11,
+            lineHeight: 1,
+          }}
+        >
+          ★
+        </span>
+      ))}
+      <span style={{ color: 'var(--text-muted)', fontSize: 10, marginLeft: 3 }}>
+        ({count || 0})
+      </span>
     </div>
   )
 }
@@ -98,84 +124,140 @@ function DetailPanel({ listing, onClose }) {
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-stone-900/20 backdrop-blur-[2px]" />
+      <div
+        className="absolute inset-0"
+        style={{ background: 'rgba(6,12,24,0.7)', backdropFilter: 'blur(4px)' }}
+      />
       <aside
-        className="relative w-[340px] h-full bg-white shadow-[−24px_0_60px_rgba(0,31,26,0.12)] flex flex-col overflow-y-auto animate-slide-left"
+        className="relative w-[360px] h-full flex flex-col overflow-y-auto animate-slide-left"
+        style={{
+          background: 'var(--bg-elevated)',
+          borderLeft: '1px solid var(--border)',
+          boxShadow: '-24px 0 60px rgba(0,0,0,0.4)',
+        }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Top accent */}
-        <div className="h-[3px] w-full flex-shrink-0" style={{ background: '#005440' }} />
+        {/* Top accent bar */}
+        <div
+          className="h-[3px] w-full flex-shrink-0"
+          style={{ background: 'var(--primary)' }}
+        />
 
         <div className="flex items-start justify-between p-5 pb-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 mb-1">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-widest mb-1"
+              style={{ color: 'var(--text-muted)' }}
+            >
               Listing Detail
             </p>
-            <h2 className="font-display text-[20px] text-stone-900 leading-tight">{listing.fish}</h2>
+            <h2
+              className="text-[20px] leading-tight"
+              style={{ fontFamily: "'DM Serif Display', serif", color: 'var(--text-primary)' }}
+            >
+              {listing.fish}
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 transition-colors mt-0.5"
+            className="p-1.5 rounded-lg transition-colors mt-0.5"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
             <X size={15} />
           </button>
         </div>
 
-        <div className="px-5 space-y-5 pb-6">
-          {/* Status */}
-          <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${s.badge}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+        <div className="px-5 space-y-5 pb-8">
+          {/* Status badge */}
+          <span
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full"
+            style={{ color: s.color, background: s.bg }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
             {listing.status}
           </span>
 
-          {/* Key metrics */}
+          {/* Key metrics grid */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'QTY', val: `${listing.qty} ${listing.unit}`, Icon: Package },
-              { label: 'PRICE / KG', val: fmtSSP(listing.price), Icon: TrendingUp },
-              { label: 'TOTAL VALUE', val: fmtSSP(totalValue), Icon: Star },
-              { label: 'LOCATION', val: listing.location, Icon: MapPin },
+              { label: 'QTY',          val: `${listing.qty} ${listing.unit}`, Icon: Package },
+              { label: 'PRICE / KG',   val: fmtSSP(listing.price),           Icon: TrendingUp },
+              { label: 'TOTAL VALUE',  val: fmtSSP(totalValue),               Icon: Star },
+              { label: 'LOCATION',     val: listing.location,                 Icon: MapPin },
             ].map(({ label, val, Icon }) => (
-              <div key={label} className="bg-stone-50 rounded-xl p-3">
+              <div
+                key={label}
+                className="rounded-xl p-3"
+                style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}
+              >
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Icon size={11} className="text-stone-400" />
-                  <span className="text-[9px] font-semibold uppercase tracking-widest text-stone-400">{label}</span>
+                  <Icon size={11} style={{ color: 'var(--text-muted)' }} />
+                  <span
+                    className="text-[9px] font-semibold uppercase tracking-widest"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {label}
+                  </span>
                 </div>
-                <span className="font-mono text-[13px] font-semibold text-stone-900">{val}</span>
+                <span
+                  className="text-[13px] font-semibold"
+                  style={{ fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}
+                >
+                  {val}
+                </span>
               </div>
             ))}
           </div>
 
-          {/* Seller + date */}
-          <div className="bg-stone-50 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-stone-500">Seller</span>
-              <span className="text-[12px] font-semibold text-stone-800">{listing.seller}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-stone-500">Listed</span>
-              <span className="font-mono text-[11px] text-stone-500">{listing.date}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-stone-500">ID</span>
-              <span className="font-mono text-[11px] text-teal-700">{listing.id}</span>
-            </div>
+          {/* Seller block */}
+          <div
+            className="rounded-xl p-4 space-y-2.5"
+            style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}
+          >
+            {[
+              { label: 'Seller', val: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{listing.seller}</span> },
+              { label: 'Rating', val: <StarRating value={listing.avg_rating} count={listing.rating_count} /> },
+              {
+                label: 'Listed',
+                val: <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-secondary)' }}>{listing.date}</span>,
+              },
+              {
+                label: 'ID',
+                val: <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>{listing.id}</span>,
+              },
+            ].map(({ label, val }) => (
+              <div key={label} className="flex items-center justify-between">
+                <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{label}</span>
+                {val}
+              </div>
+            ))}
           </div>
 
           {/* Actions */}
           <div className="space-y-2 pt-1">
             {listing.status === 'DRAFT' && (
-              <button className="w-full py-3 bg-teal-700 hover:bg-teal-800 text-white text-[12px] font-bold rounded-xl transition-colors">
+              <button
+                className="w-full py-3 text-[12px] font-bold rounded-xl transition-all duration-200"
+                style={{ background: 'var(--primary)', color: 'var(--bg-deep)' }}
+              >
                 Publish Listing
               </button>
             )}
             {listing.status === 'ACTIVE' && (
-              <button className="w-full py-3 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[12px] font-bold rounded-xl transition-colors">
+              <button
+                className="w-full py-3 text-[12px] font-bold rounded-xl transition-all duration-200"
+                style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--secondary)', border: '1px solid rgba(245,158,11,0.3)' }}
+              >
                 Feature Listing
               </button>
             )}
             {listing.status !== 'REMOVED' && (
-              <button className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-[12px] font-bold rounded-xl transition-colors">
+              <button
+                className="w-full flex items-center justify-center gap-2 py-3 text-[12px] font-bold rounded-xl transition-all duration-200"
+                style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}
+              >
                 <Trash2 size={13} />
                 Remove Listing
               </button>
@@ -188,7 +270,7 @@ function DetailPanel({ listing, onClose }) {
 }
 
 export default function Listings() {
-  const [listings, setListings]         = useState(LISTINGS)
+  const [listings, setListings]         = useState([])
   const [loading, setLoading]           = useState(true)
   const [liveData, setLiveData]         = useState(false)
   const [activeFilter, setActiveFilter] = useState('ALL')
@@ -214,24 +296,33 @@ export default function Listings() {
     const q = search.toLowerCase()
     return listings
       .filter(l => activeFilter === 'ALL' || l.status === activeFilter)
-      .filter(l => !q || [l.id, l.fish, l.seller, l.location].some(v => v.toLowerCase().includes(q)))
+      .filter(l => !q || [l.id, l.fish, l.seller, l.location].some(v => String(v).toLowerCase().includes(q)))
       .sort((a, b) => {
         const av = a[sortCol], bv = b[sortCol]
         if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av
-        return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av))
+        return sortDir === 'asc'
+          ? String(av).localeCompare(String(bv))
+          : String(bv).localeCompare(String(av))
       })
-  }, [activeFilter, search, sortCol, sortDir])
+  }, [listings, activeFilter, search, sortCol, sortDir])
 
   const activeValue = useMemo(
-    () => filtered.filter(l => l.status === 'ACTIVE').reduce((s, l) => s + (l.qty * l.price), 0),
-    [filtered]
+    () => listings.filter(l => l.status === 'ACTIVE').reduce((s, l) => s + l.qty * l.price, 0),
+    [listings]
   )
 
   const kpiItems = useMemo(() => [
-    { label: 'TOTAL LISTINGS', val: listings.length,                                      bar: '#005440' },
-    { label: 'ACTIVE',         val: listings.filter(l => l.status === 'ACTIVE').length,   bar: '#0F766E' },
-    { label: 'SOLD OUT',       val: listings.filter(l => l.status === 'SOLD').length,     bar: '#6B7280' },
-    { label: 'ACTIVE VALUE',   val: 'SSP ' + listings.filter(l => l.status === 'ACTIVE').reduce((s, l) => s + (l.qty * l.price), 0).toLocaleString(), bar: '#B45309' },
+    { label: 'TOTAL LISTINGS', val: listings.length,                                    color: 'var(--primary)'   },
+    { label: 'ACTIVE',         val: listings.filter(l => l.status === 'ACTIVE').length, color: 'var(--success)'   },
+    { label: 'SOLD OUT',       val: listings.filter(l => l.status === 'SOLD').length,   color: 'var(--text-muted)'},
+    {
+      label: 'ACTIVE VALUE',
+      val: 'SSP ' + listings
+        .filter(l => l.status === 'ACTIVE')
+        .reduce((s, l) => s + l.qty * l.price, 0)
+        .toLocaleString(),
+      color: 'var(--secondary)',
+    },
   ], [listings])
 
   function toggleSort(col) {
@@ -241,17 +332,34 @@ export default function Listings() {
 
   return (
     <AppLayout title="Listings" subtitle="Fish listings posted by traders across the platform">
-      <div className="max-w-7xl mx-auto space-y-5">
+      <div className="max-w-[1280px] mx-auto space-y-5">
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {kpiItems.map((k, i) => (
-            <div key={i} className={`bg-white rounded-xl shadow-card overflow-hidden flex flex-col animate-fade-up stagger-${i + 1}`}>
-              <div className="h-[3px] w-full flex-shrink-0" style={{ background: k.bar }} />
+            <div
+              key={i}
+              className={`overflow-hidden flex flex-col animate-fade-up stagger-${i + 1}`}
+              style={CARD_S}
+            >
+              <div
+                className="h-[3px] w-full flex-shrink-0"
+                style={{ background: k.color }}
+              />
               <div className="p-4 flex flex-col gap-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">{k.label}</p>
-                <span className="font-mono text-2xl font-semibold leading-none text-stone-900">
-                  {loading ? <span className="inline-block h-7 w-16 bg-stone-100 rounded animate-pulse" /> : k.val}
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  {k.label}
+                </p>
+                <span
+                  className="text-[24px] font-semibold leading-none"
+                  style={{ fontFamily: 'JetBrains Mono', color: k.color }}
+                >
+                  {loading
+                    ? <span className="shimmer inline-block h-7 w-16 rounded-lg" />
+                    : k.val}
                 </span>
               </div>
             </div>
@@ -259,63 +367,102 @@ export default function Listings() {
         </div>
 
         {/* Toolbar */}
-        <div className="bg-white rounded-xl shadow-card p-4 flex flex-col gap-3 animate-fade-up stagger-5">
+        <div
+          className="p-4 flex flex-col gap-3 animate-fade-up stagger-5"
+          style={CARD_S}
+        >
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: 'var(--text-muted)' }}
+              />
               <input
                 type="text"
                 placeholder="Search species, seller, location…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-[13px] bg-stone-50 rounded-lg border border-stone-100 focus:outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20 transition font-sans"
+                className="w-full pl-9 pr-4 py-2 text-[13px] rounded-xl outline-none transition-all duration-200"
+                style={{
+                  background: 'var(--bg-glass)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'Outfit',
+                }}
+                onFocus={e => e.target.style.borderColor = 'rgba(10,181,163,0.4)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
               />
             </div>
-            <div className="flex items-center gap-2 text-[12px] text-stone-400">
+            <div className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--text-muted)' }}>
               <Filter size={12} />
               <span>{filtered.length} of {listings.length} listings</span>
             </div>
             {liveData && (
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-lg">
-                <RefreshCw size={10} strokeWidth={2.5} />
+              <div
+                className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg"
+                style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--success)' }}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--success)' }} />
+                  <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: 'var(--success)' }} />
+                </span>
                 LIVE
               </div>
             )}
             {activeValue > 0 && (
-              <div className="flex items-center gap-1.5 bg-teal-50 text-teal-700 text-[11px] font-semibold px-3 py-1.5 rounded-lg">
+              <div
+                className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: 'var(--primary-glow)', color: 'var(--primary)' }}
+              >
                 <TrendingUp size={11} strokeWidth={2.5} />
                 {fmtSSP(activeValue)} active
               </div>
             )}
           </div>
+
+          {/* Filter chips */}
           <div className="flex gap-2 flex-wrap">
-            {FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full transition-colors ${
-                  activeFilter === f
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+            {FILTERS.map(f => {
+              const st = STATUS_STYLES[f]
+              const isActive = activeFilter === f
+              return (
+                <button
+                  key={f}
+                  onClick={() => setActiveFilter(f)}
+                  className="text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full transition-all duration-200"
+                  style={{
+                    background: isActive
+                      ? (f === 'ALL' ? 'var(--primary)' : (st?.bg ?? 'var(--primary-glow)'))
+                      : 'var(--bg-glass)',
+                    color: isActive
+                      ? (f === 'ALL' ? 'var(--bg-deep)' : (st?.color ?? 'var(--primary)'))
+                      : 'var(--text-muted)',
+                    border: `1px solid ${isActive ? 'transparent' : 'var(--border)'}`,
+                  }}
+                >
+                  {f}
+                </button>
+              )
+            })}
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-card overflow-hidden animate-fade-up stagger-6">
+        <div
+          className="overflow-hidden animate-fade-up stagger-6"
+          style={CARD_S}
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-stone-100">
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {COLS.map(({ col, label }) => (
                     <th
                       key={col}
                       onClick={() => toggleSort(col)}
-                      className="px-5 py-3 text-[10px] font-semibold uppercase tracking-widest text-stone-400 cursor-pointer select-none whitespace-nowrap hover:text-stone-700 transition-colors"
+                      className="px-5 py-3.5 text-[10px] font-semibold uppercase tracking-widest cursor-pointer select-none whitespace-nowrap transition-all duration-150"
+                      style={{ color: sortCol === col ? 'var(--primary)' : 'var(--text-muted)' }}
                     >
                       {label}
                       <SortChevron active={sortCol === col} dir={sortDir} />
@@ -325,66 +472,109 @@ export default function Listings() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {loading ? (
+                  [...Array(6)].map((_, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                      {[...Array(9)].map((_, j) => (
+                        <td key={j} className="px-5 py-4">
+                          <div className="shimmer h-3 rounded" style={{ width: `${50 + (j % 3) * 20}%` }} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-16 text-stone-400 text-[13px]">
-                      <Fish size={28} className="mx-auto mb-3 opacity-25" />
-                      No listings match this filter
+                    <td
+                      colSpan={9}
+                      className="text-center py-16 text-[13px]"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      <Fish size={28} className="mx-auto mb-3 opacity-30" />
+                      {listings.length === 0 ? 'No listings yet' : 'No listings match this filter'}
                     </td>
                   </tr>
-                ) : filtered.map((l) => {
+                ) : filtered.map(l => {
                   const s = STATUS_STYLES[l.status] ?? STATUS_STYLES.DRAFT
                   const isSelected = selected?.id === l.id
                   return (
                     <tr
                       key={l.id}
                       onClick={() => setSelected(isSelected ? null : l)}
-                      className={`border-b border-stone-50 cursor-pointer transition-colors group ${
-                        isSelected ? 'bg-teal-50/60' : 'hover:bg-stone-50/70'
-                      }`}
+                      className="cursor-pointer transition-all duration-150 group"
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        background: isSelected ? 'var(--primary-glow)' : 'transparent',
+                      }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
                     >
                       <td className="px-5 py-3.5">
-                        <span className="font-mono text-[12px] font-semibold text-teal-700">{l.id}</span>
+                        <span
+                          style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}
+                        >
+                          {l.id}
+                        </span>
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <SpeciesIcon species={l.fish} />
-                          <span className="text-[13px] font-semibold text-stone-800">{l.fish}</span>
+                          <SpeciesAvatar species={l.fish} photo={l.photo} />
+                          <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            {l.fish}
+                          </span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[13px] text-stone-700">{l.seller}</span>
+                        <div>
+                          <div className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+                            {l.seller}
+                          </div>
+                          <StarRating value={l.avg_rating} count={l.rating_count} />
+                        </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5 text-[12px] text-stone-500">
-                          <MapPin size={11} className="text-stone-300" />
+                        <div className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                          <MapPin size={11} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
                           {l.location}
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="font-mono text-[12px] text-stone-600">{l.qty} {l.unit}</span>
+                        <span
+                          style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--text-secondary)' }}
+                        >
+                          {l.qty} {l.unit}
+                        </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="font-mono text-[13px] font-semibold text-stone-900">{fmtSSP(l.price)}</span>
+                        <span
+                          style={{ fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}
+                        >
+                          {fmtSSP(l.price)}
+                        </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${s.badge}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                        <span
+                          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full"
+                          style={{ color: s.color, background: s.bg }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
                           {l.status}
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1 text-[12px] text-stone-400">
-                          <Calendar size={11} className="text-stone-300" />
+                        <div className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                          <Calendar size={11} style={{ opacity: 0.6 }} />
                           <span className="whitespace-nowrap">{l.date}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <button className={`p-1.5 rounded-lg transition-all ${
-                          isSelected
-                            ? 'bg-teal-100 text-teal-700'
-                            : 'opacity-0 group-hover:opacity-100 hover:bg-stone-100 text-stone-400'
-                        }`}>
+                        <button
+                          className="p-1.5 rounded-lg transition-all"
+                          style={{
+                            background: isSelected ? 'var(--primary-glow)' : 'transparent',
+                            color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
+                            opacity: isSelected ? 1 : 0,
+                          }}
+                        >
                           <Eye size={14} />
                         </button>
                       </td>
@@ -395,12 +585,18 @@ export default function Listings() {
             </table>
           </div>
 
-          {filtered.length > 0 && (
-            <div className="border-t border-stone-100 px-5 py-3 flex items-center justify-between">
-              <span className="text-[11px] text-stone-400">
-                Showing {filtered.length} listings
+          {!loading && filtered.length > 0 && (
+            <div
+              className="px-5 py-3 flex items-center justify-between"
+              style={{ borderTop: '1px solid var(--border)' }}
+            >
+              <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Showing {filtered.length} listings {liveData ? '· live data' : ''}
               </span>
-              <button className="text-[11px] font-semibold text-teal-700 flex items-center gap-1 hover:underline">
+              <button
+                className="text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                style={{ color: 'var(--primary)' }}
+              >
                 Export CSV <ArrowUpRight size={11} />
               </button>
             </div>
@@ -409,7 +605,6 @@ export default function Listings() {
 
       </div>
 
-      {/* Detail panel */}
       <DetailPanel listing={selected} onClose={() => setSelected(null)} />
     </AppLayout>
   )

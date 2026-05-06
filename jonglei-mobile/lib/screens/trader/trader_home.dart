@@ -35,8 +35,10 @@ class _TraderHomeScreenState extends State<TraderHomeScreen> {
     ];
 
     return Scaffold(
+      backgroundColor: AppColors.bgBase,
       body: IndexedStack(index: _tab, children: tabs),
       bottomNavigationBar: NavigationBar(
+        backgroundColor: AppColors.bgDeep,
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
@@ -85,9 +87,9 @@ class _DashboardStats {
       );
 
   static const fallback = _DashboardStats(
-    activeListings: '14',
-    pendingOrders: '08',
-    activeShipments: '03',
+    activeListings: '0',
+    pendingOrders: '0',
+    activeShipments: '0',
   );
 }
 
@@ -100,11 +102,8 @@ class _TraderDashboard extends StatefulWidget {
 }
 
 class _TraderDashboardState extends State<_TraderDashboard> {
-  static const _prices = [
-    _Price('BOR', 'SSP 450', 'Nile Perch'),
-    _Price('JUBA', 'SSP 620', 'Nile Perch'),
-    _Price('WAU', 'SSP 480', 'Nile Perch'),
-  ];
+  List<_Price> _prices = [];
+  bool _pricesLoading = true;
 
   _DashboardStats? _stats;
   bool _statsLoading = true;
@@ -116,6 +115,7 @@ class _TraderDashboardState extends State<_TraderDashboard> {
     super.initState();
     _loadCachedStats().then((_) => _fetchStats());
     _fetchTradeLogs();
+    _fetchPrices();
   }
 
   Future<void> _loadCachedStats() async {
@@ -179,291 +179,420 @@ class _TraderDashboardState extends State<_TraderDashboard> {
         });
       }
     } catch (_) {
+      if (mounted) setState(() => _logsLoading = false);
+    }
+  }
+
+  Future<void> _fetchPrices() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final data = await api.get('/marketplace/prices/');
+      final list = data is List ? data : (data['results'] as List? ?? []);
+      final parsed = list.take(6).map<_Price>((item) {
+        final city  = (item['city'] as String? ?? '').toUpperCase();
+        final sp    = item['species'] as String? ?? '';
+        final price = item['price_per_kg'] ?? item['price'] ?? 0;
+        return _Price(city, 'SSP $price', sp);
+      }).toList();
       if (mounted) {
         setState(() {
-          _tradeLogs = const [
-            _TradeLog('Nile Perch', '45 KG', 'B. Chol', 'PENDING'),
-            _TradeLog('Tilapia', '120 KG', 'Nile Logistics', 'CONFIRMED'),
-            _TradeLog('Catfish', '80 KG', 'Juba Market', 'IN TRANSIT'),
-          ];
-          _logsLoading = false;
+          _prices = parsed;
+          _pricesLoading = false;
         });
       }
+    } catch (_) {
+      if (mounted) setState(() => _pricesLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
+    final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: AppColors.surfaceLow,
-      body: CustomScrollView(
-        slivers: [
-          // Header
-          SliverToBoxAdapter(
-            child: Container(
-              color: AppColors.surface,
-              padding: EdgeInsets.fromLTRB(
-                  20, MediaQuery.of(context).padding.top + 16, 20, 16),
-              child: Row(
-                children: [
-                  // Avatar
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        user?.username.isNotEmpty == true
-                            ? user!.username[0].toUpperCase()
-                            : 'T',
-                        style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white),
+      backgroundColor: AppColors.bgBase,
+      body: AmbientBackground(
+        child: CustomScrollView(
+          slivers: [
+            // ── Cinema header ───────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppColors.bgDeep, AppColors.bgBase],
+                  ),
+                  border: Border(
+                    bottom: BorderSide(color: AppColors.border),
+                  ),
+                ),
+                padding: EdgeInsets.fromLTRB(20, topPad + 16, 20, 16),
+                child: Row(
+                  children: [
+                    // Avatar — glass circle
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGlow,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          user?.username.isNotEmpty == true
+                              ? user!.username[0].toUpperCase()
+                              : 'T',
+                          style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('JONGLEI HUB',
+                              style: GoogleFonts.dmSerifDisplay(
+                                fontSize: 20,
+                                color: AppColors.primary,
+                                letterSpacing: -0.4,
+                              )),
+                          Text('Fish Marketplace',
+                              style: AppTextStyles.ui(12,
+                                  color: AppColors.textMuted)),
+                        ],
+                      ),
+                    ),
+                    Stack(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.notifications_outlined),
+                          color: AppColors.textSecondary,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const NotificationScreen()),
+                          ),
+                        ),
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                                color: AppColors.danger,
+                                shape: BoxShape.circle),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Welcome row
+                    Row(
                       children: [
                         Text('WELCOME BACK,',
                             style: AppTextStyles.label(10,
-                                color: AppColors.onSurfaceVariant)),
+                                color: AppColors.textMuted)),
+                        const SizedBox(width: 6),
                         Text(user?.username ?? 'Trader',
-                            style: AppTextStyles.ui(18,
-                                weight: FontWeight.w800,
-                                color: AppColors.primary)),
+                            style: AppTextStyles.label(10,
+                                color: AppColors.primary,
+                                weight: FontWeight.w800)),
                       ],
                     ),
-                  ),
-                  Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined),
-                        color: AppColors.onSurfaceVariant,
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const NotificationScreen()),
+                    const SizedBox(height: 16),
+
+                    // ── Stat cards ──────────────────────────────────────────
+                    _statsLoading
+                        ? _statSkeletonCard(wide: true)
+                        : LedgerStatCard(
+                            label: 'My Listings',
+                            value: _stats?.activeListings ?? '—',
+                            accentColor: AppColors.primary,
+                            icon: Icons.inventory_2_outlined,
+                            wide: true,
+                          ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _statsLoading
+                              ? _statSkeletonCard()
+                              : LedgerStatCard(
+                                  label: 'My Orders',
+                                  value: _stats?.pendingOrders ?? '—',
+                                  accentColor: AppColors.warning,
+                                  icon: Icons.pending_actions_outlined,
+                                ),
                         ),
-                      ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                              color: AppColors.danger, shape: BoxShape.circle),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _statsLoading
+                              ? _statSkeletonCard()
+                              : LedgerStatCard(
+                                  label: 'Revenue Today',
+                                  value: 'SSP 0',
+                                  accentColor: AppColors.secondary,
+                                  icon: Icons.payments_outlined,
+                                ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Stat cards
-                  LedgerStatCard(
-                    label: 'Active Listings',
-                    value: _statsLoading ? '…' : (_stats?.activeListings ?? '—'),
-                    accentColor: AppColors.primary,
-                    icon: Icons.inventory_2_outlined,
-                    wide: true,
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _statsLoading
-                            ? _statSkeletonCard()
-                            : LedgerStatCard(
-                                label: 'Pending',
-                                value: _stats?.pendingOrders ?? '—',
-                                accentColor: AppColors.secondary,
-                                icon: Icons.pending_actions_outlined,
-                              ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _statsLoading
-                            ? _statSkeletonCard()
-                            : LedgerStatCard(
-                                label: 'In Transit',
-                                value: _stats?.activeShipments ?? '—',
-                                accentColor: AppColors.info,
-                                icon: Icons.local_shipping_outlined,
-                              ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // Market Price Ledger
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text('Market Price Ledger',
-                            style: AppTextStyles.ui(15, weight: FontWeight.w700)),
-                      ),
-                      Text('LIVE UPDATES',
-                          style: AppTextStyles.label(10,
-                              color: AppColors.success,
-                              weight: FontWeight.w700)),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 88,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _prices.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) => _PriceCard(price: _prices[i]),
+                      ],
                     ),
-                  ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 28),
 
-                  // POST NEW LISTING CTA
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.push(
+                    // ── Live Price Strip ────────────────────────────────────
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('Live Market Prices',
+                              style: AppTextStyles.ui(15,
+                                  weight: FontWeight.w700,
+                                  color: AppColors.textPrimary)),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                    color: AppColors.success,
+                                    shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 4),
+                              Text('LIVE',
+                                  style: AppTextStyles.label(9,
+                                      color: AppColors.success,
+                                      weight: FontWeight.w800)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 96,
+                      child: _pricesLoading
+                          ? ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: 4,
+                              separatorBuilder: (_, idx) => const SizedBox(width: 8),
+                              itemBuilder: (_, idx) => Container(
+                                width: 110,
+                                decoration: BoxDecoration(
+                                  color: AppColors.bgElevated,
+                                  borderRadius: BorderRadius.circular(AppRadius.card),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 16, height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 1.5, color: AppColors.primary),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : _prices.isEmpty
+                              ? Container(
+                                  width: double.infinity,
+                                  alignment: Alignment.center,
+                                  child: Text('No price data yet',
+                                      style: AppTextStyles.ui(12,
+                                          color: AppColors.textMuted)),
+                                )
+                              : ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _prices.length,
+                                  separatorBuilder: (_, idx) =>
+                                      const SizedBox(width: 8),
+                                  itemBuilder: (_, i) =>
+                                      _PriceCard(price: _prices[i]),
+                                ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── POST NEW LISTING CTA ────────────────────────────────
+                    _PressButton(
+                      onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
                             builder: (_) => const CreateListingScreen()),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.lg)),
-                        elevation: 0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.add_circle_outline_rounded, size: 20),
-                          const SizedBox(width: 10),
-                          Text('POST NEW LISTING',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1,
-                                color: Colors.white,
-                              )),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Encyclopedia quick-link
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const FishEncyclopediaScreen()),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppRadius.card),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36, height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.menu_book_rounded,
-                                size: 18, color: AppColors.primary),
+                      child: Container(
+                        width: double.infinity,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, Color(0xFF07A090)],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Fish Encyclopedia',
-                                    style: AppTextStyles.ui(14, weight: FontWeight.w700)),
-                                Text('Species guide, nutrition & prices',
-                                    style: AppTextStyles.ui(12,
-                                        color: AppColors.onSurfaceVariant)),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right_rounded,
-                              size: 18, color: AppColors.onSurfaceFaint),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  Text('Recent Trade Logs',
-                      style: AppTextStyles.ui(15, weight: FontWeight.w700)),
-                  const SizedBox(height: 12),
-
-                  // Trade log list
-                  if (_logsLoading)
-                    Column(
-                      children: List.generate(
-                        3,
-                        (_) => const Padding(
-                          padding: EdgeInsets.only(bottom: 8),
-                          child: ShimmerCard(),
+                          borderRadius: BorderRadius.circular(AppRadius.card),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.add_circle_outline_rounded,
+                                size: 20, color: AppColors.bgDeep),
+                            const SizedBox(width: 10),
+                            Text('POST NEW LISTING',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1,
+                                  color: AppColors.bgDeep,
+                                )),
+                          ],
                         ),
                       ),
-                    )
-                  else
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppRadius.card),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ── Encyclopedia card ───────────────────────────────────
+                    _PressButton(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const FishEncyclopediaScreen()),
                       ),
-                      child: Column(
-                        children: _tradeLogs.asMap().entries.map((e) {
-                          final isLast = e.key == _tradeLogs.length - 1;
-                          return _TradeLogTile(log: e.value, isLast: isLast);
-                        }).toList(),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [AppColors.bgElevated, Color(0xFF162440)],
+                          ),
+                          borderRadius: BorderRadius.circular(AppRadius.card),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.secondaryGlow,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.menu_book_rounded,
+                                  size: 20, color: AppColors.secondary),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Fish Encyclopedia',
+                                      style: AppTextStyles.ui(14,
+                                          weight: FontWeight.w700,
+                                          color: AppColors.textPrimary)),
+                                  const SizedBox(height: 2),
+                                  Text('Species guide, nutrition & prices',
+                                      style: AppTextStyles.ui(12,
+                                          color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded,
+                                size: 18, color: AppColors.textMuted),
+                          ],
+                        ),
                       ),
                     ),
 
-                  const SizedBox(height: 16),
-                ],
+                    const SizedBox(height: 28),
+
+                    // ── Recent Trade Logs ───────────────────────────────────
+                    Text('Recent Trade Logs',
+                        style: AppTextStyles.ui(15,
+                            weight: FontWeight.w700,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 12),
+
+                    if (_logsLoading)
+                      Column(
+                        children: List.generate(
+                          3,
+                          (_) => const Padding(
+                            padding: EdgeInsets.only(bottom: 8),
+                            child: ShimmerCard(),
+                          ),
+                        ),
+                      )
+                    else if (_tradeLogs.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgElevated,
+                          borderRadius: BorderRadius.circular(AppRadius.card),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Center(
+                          child: Text('No trade logs yet',
+                              style: AppTextStyles.ui(13,
+                                  color: AppColors.textMuted)),
+                        ),
+                      )
+                    else
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.bgElevated,
+                          borderRadius: BorderRadius.circular(AppRadius.card),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          children: _tradeLogs.asMap().entries.map((e) {
+                            final isLast = e.key == _tradeLogs.length - 1;
+                            return _TradeLogTile(
+                                log: e.value, isLast: isLast);
+                          }).toList(),
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _statSkeletonCard() {
+  Widget _statSkeletonCard({bool wide = false}) {
     return Container(
+      height: wide ? 88 : 80,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.bgElevated,
         borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,8 +600,9 @@ class _TraderDashboardState extends State<_TraderDashboard> {
           Container(
             height: 3,
             decoration: const BoxDecoration(
-              color: AppColors.surfaceHigh,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+              color: AppColors.surfaceHighest,
+              borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AppRadius.card)),
             ),
           ),
           Padding(
@@ -492,6 +622,51 @@ class _TraderDashboardState extends State<_TraderDashboard> {
   }
 }
 
+// ─── Press animation wrapper ──────────────────────────────────────────────────
+class _PressButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  const _PressButton({required this.child, required this.onTap});
+
+  @override
+  State<_PressButton> createState() => _PressButtonState();
+}
+
+class _PressButtonState extends State<_PressButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 120));
+    _scale = Tween<double>(begin: 1.0, end: 0.97).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) {
+        _ctrl.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _ctrl.reverse(),
+      child: ScaleTransition(scale: _scale, child: widget.child),
+    );
+  }
+}
+
+// ─── Data models ──────────────────────────────────────────────────────────────
 class _TradeLog {
   final String fish;
   final String quantity;
@@ -507,6 +682,7 @@ class _Price {
   const _Price(this.city, this.price, this.fish);
 }
 
+// ─── Price card widget ────────────────────────────────────────────────────────
 class _PriceCard extends StatelessWidget {
   final _Price price;
   const _PriceCard({required this.price});
@@ -514,41 +690,37 @@ class _PriceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 120,
+      width: 130,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceHigh,
+        color: AppColors.bgElevated,
         borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(price.city,
               style: AppTextStyles.label(10,
-                  color: AppColors.primary, weight: FontWeight.w700)),
+                  color: AppColors.primary, weight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.set_meal_rounded,
-                  size: 12, color: AppColors.onSurfaceVariant),
-              const SizedBox(width: 3),
-              Expanded(
-                child: Text(price.price,
-                    style: AppTextStyles.data(14,
-                        weight: FontWeight.w700, color: AppColors.primary)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
+          Text(price.fish,
+              style: AppTextStyles.ui(10, color: AppColors.textMuted),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+          const Spacer(),
+          Text(price.price,
+              style: AppTextStyles.data(15,
+                  weight: FontWeight.w700, color: AppColors.primary)),
           Text('/ KG',
-              style: AppTextStyles.label(9, color: AppColors.onSurfaceFaint)),
+              style: AppTextStyles.label(9, color: AppColors.textMuted)),
         ],
       ),
     );
   }
 }
 
+// ─── Trade log tile ───────────────────────────────────────────────────────────
 class _TradeLogTile extends StatelessWidget {
   final _TradeLog log;
   final bool isLast;
@@ -562,16 +734,16 @@ class _TradeLogTile extends StatelessWidget {
         border: isLast
             ? null
             : const Border(
-                bottom: BorderSide(color: AppColors.surfaceLow, width: 1)),
+                bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: AppColors.surfaceLow,
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.primaryGlow,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.set_meal_rounded,
                 size: 20, color: AppColors.primary),
@@ -582,11 +754,13 @@ class _TradeLogTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(log.fish,
-                    style: AppTextStyles.ui(14, weight: FontWeight.w700)),
+                    style: AppTextStyles.ui(14,
+                        weight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
                 const SizedBox(height: 2),
                 Text('${log.quantity} • ${log.party}',
                     style: AppTextStyles.ui(12,
-                        color: AppColors.onSurfaceVariant)),
+                        color: AppColors.textSecondary)),
               ],
             ),
           ),

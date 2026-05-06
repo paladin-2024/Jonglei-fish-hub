@@ -465,6 +465,7 @@ class _JobCard extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8)),
                             elevation: 0,
+                            padding: EdgeInsets.zero,
                           ),
                           icon: const Icon(Icons.local_shipping_rounded,
                               size: 16, color: Colors.white),
@@ -484,6 +485,7 @@ class _JobCard extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8)),
                             elevation: 0,
+                            padding: EdgeInsets.zero,
                           ),
                           child: isAccepting
                               ? const SizedBox(

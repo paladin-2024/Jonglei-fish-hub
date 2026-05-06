@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -25,6 +27,8 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
 
   // Step 2 — Location
   final _locationController = TextEditingController();
+  double? _lat;
+  double? _lng;
 
   // Step 3 — Photo
   File? _photoFile;
@@ -100,6 +104,8 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
         'unit':        _unit,
         'location':    _locationController.text.trim(),
         'status':      'ACTIVE',
+        if (_lat != null) 'latitude':  _lat.toString(),
+        if (_lng != null) 'longitude': _lng.toString(),
       };
 
       if (_photoFile != null) {
@@ -176,6 +182,12 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                 _Step2(
                   locationCtrl: _locationController,
                   suggestions: _locationSuggestions,
+                  initialLat: _lat,
+                  initialLng: _lng,
+                  onCoordsChanged: (lat, lng) => setState(() {
+                    _lat = lat;
+                    _lng = lng;
+                  }),
                 ),
                 _Step3(
                   photoFile: _photoFile,
@@ -203,8 +215,8 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               child: ElevatedButton.icon(
                 onPressed: _canAdvance && !_submitting ? _next : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.secondary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.bgDeep,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md)),
@@ -225,7 +237,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                   _step == 3 ? 'PUBLISH LISTING' : 'CONTINUE',
                   style: AppTextStyles.ui(14,
                       weight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppColors.bgDeep,
                       letterSpacing: 0.6),
                 ),
               ),
@@ -263,7 +275,7 @@ class _StepIndicator extends StatelessWidget {
                         height: 3,
                         decoration: BoxDecoration(
                           color: done || active
-                              ? AppColors.secondary
+                              ? AppColors.primary
                               : AppColors.surfaceHigh,
                           borderRadius: BorderRadius.circular(2),
                         ),
@@ -273,7 +285,7 @@ class _StepIndicator extends StatelessWidget {
                         _labels[i],
                         style: AppTextStyles.label(8,
                             color: active
-                                ? AppColors.secondary
+                                ? AppColors.primary
                                 : done
                                     ? AppColors.onSurfaceVariant
                                     : AppColors.onSurfaceFaint,
@@ -434,14 +446,122 @@ class _Step1 extends StatelessWidget {
   }
 }
 
-// ── Step 2: Location ───────────────────────────────────────────────────────────
-class _Step2 extends StatelessWidget {
+// ── Step 2: Location (Google Maps + GPS) ──────────────────────────────────────
+class _Step2 extends StatefulWidget {
   final TextEditingController locationCtrl;
   final List<String> suggestions;
-  const _Step2({required this.locationCtrl, required this.suggestions});
+  final double? initialLat;
+  final double? initialLng;
+  final void Function(double lat, double lng) onCoordsChanged;
+
+  const _Step2({
+    required this.locationCtrl,
+    required this.suggestions,
+    required this.onCoordsChanged,
+    this.initialLat,
+    this.initialLng,
+  });
+
+  @override
+  State<_Step2> createState() => _Step2State();
+}
+
+class _Step2State extends State<_Step2> {
+  GoogleMapController? _mapCtrl;
+  LatLng? _pinned;
+  bool _gettingLocation = false;
+
+  // South Sudan geographic center
+  static const _defaultCenter = LatLng(7.8699, 29.6667);
+
+  static const _locationCoords = {
+    'Juba':       LatLng(4.8594,  31.5713),
+    'Bor':        LatLng(6.2108,  31.5590),
+    'Malakal':    LatLng(9.5337,  31.6581),
+    'Renk':       LatLng(11.7907, 32.7909),
+    'Fangak':     LatLng(9.0833,  30.9500),
+    'Pibor':      LatLng(6.8031,  33.1318),
+    'Panyagoor':  LatLng(7.1167,  30.7333),
+    'Twic East':  LatLng(7.4500,  31.5000),
+    'Wau':        LatLng(7.7023,  27.9939),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialLat != null && widget.initialLng != null) {
+      _pinned = LatLng(widget.initialLat!, widget.initialLng!);
+    }
+  }
+
+  Future<void> _useCurrentPosition() async {
+    setState(() => _gettingLocation = true);
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Location permission denied',
+                style: AppTextStyles.ui(13, color: AppColors.bgDeep)),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+          ));
+        }
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ));
+      final ll = LatLng(pos.latitude, pos.longitude);
+      setState(() => _pinned = ll);
+      widget.onCoordsChanged(pos.latitude, pos.longitude);
+      widget.locationCtrl.text =
+          'My Location (${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)})';
+      _mapCtrl?.animateCamera(CameraUpdate.newLatLngZoom(ll, 14));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Could not get location',
+              style: AppTextStyles.ui(13, color: AppColors.bgDeep)),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _gettingLocation = false);
+    }
+  }
+
+  void _onMapTap(LatLng pos) {
+    setState(() => _pinned = pos);
+    widget.onCoordsChanged(pos.latitude, pos.longitude);
+    final current = widget.locationCtrl.text;
+    if (current.isEmpty ||
+        current.startsWith('My Location') ||
+        current.startsWith('Pin:')) {
+      widget.locationCtrl.text =
+          'Pin: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+    }
+  }
+
+  void _selectSuggestion(String name) {
+    widget.locationCtrl.text = name;
+    final coords = _locationCoords[name];
+    if (coords != null) {
+      setState(() => _pinned = coords);
+      widget.onCoordsChanged(coords.latitude, coords.longitude);
+      _mapCtrl?.animateCamera(CameraUpdate.newLatLngZoom(coords, 11));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final center = _pinned ?? _defaultCenter;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -450,46 +570,162 @@ class _Step2 extends StatelessWidget {
           Text('PICKUP LOCATION',
               style: AppTextStyles.label(11, color: AppColors.onSurfaceVariant)),
           const SizedBox(height: 4),
-          Text('Where buyers can collect or arrange shipping from.',
-              style: AppTextStyles.ui(13, color: AppColors.onSurfaceFaint, height: 1.4)),
-          const SizedBox(height: 16),
+          Text('Tap the map to pin a location, or use your GPS position.',
+              style: AppTextStyles.ui(13,
+                  color: AppColors.onSurfaceFaint, height: 1.4)),
+          const SizedBox(height: 14),
+
+          // ── Map ──
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            child: Container(
+              height: 230,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: center,
+                  zoom: _pinned != null ? 12 : 6,
+                ),
+                onMapCreated: (c) => _mapCtrl = c,
+                onTap: _onMapTap,
+                markers: _pinned != null
+                    ? {
+                        Marker(
+                          markerId: const MarkerId('pin'),
+                          position: _pinned!,
+                          icon: BitmapDescriptor.defaultMarkerWithHue(
+                              162), // teal hue
+                        ),
+                      }
+                    : {},
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: false,
+                mapToolbarEnabled: false,
+                compassEnabled: false,
+                liteModeEnabled: false,
+              ),
+            ),
+          ),
+
+          if (_pinned != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    size: 13, color: AppColors.success),
+                const SizedBox(width: 5),
+                Text(
+                  '${_pinned!.latitude.toStringAsFixed(4)}, ${_pinned!.longitude.toStringAsFixed(4)}',
+                  style: AppTextStyles.data(11,
+                      color: AppColors.success, weight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 12),
+
+          // ── GPS button ──
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _gettingLocation ? null : _useCurrentPosition,
+              icon: _gettingLocation
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.primary))
+                  : const Icon(Icons.my_location_rounded, size: 16),
+              label: Text(
+                _gettingLocation
+                    ? 'Getting Location…'
+                    : 'USE MY CURRENT POSITION',
+                style: AppTextStyles.ui(13,
+                    weight: FontWeight.w700, letterSpacing: 0.4),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md)),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          // ── Manual text field ──
+          Text('OR TYPE A LOCATION NAME',
+              style: AppTextStyles.label(10,
+                  color: AppColors.onSurfaceFaint)),
+          const SizedBox(height: 8),
           TextFormField(
-            controller: locationCtrl,
+            controller: widget.locationCtrl,
             style: AppTextStyles.ui(14),
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.location_on_outlined),
               hintText: 'e.g. Bor, Malakal, Fangak',
             ),
           ),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 14),
+
+          // ── Quick select chips ──
           Text('QUICK SELECT',
-              style: AppTextStyles.label(10, color: AppColors.onSurfaceFaint)),
+              style: AppTextStyles.label(10,
+                  color: AppColors.onSurfaceFaint)),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: suggestions.map((s) => GestureDetector(
-              onTap: () => locationCtrl.text = s,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+            children: widget.suggestions.map((s) {
+              final isActive = widget.locationCtrl.text == s;
+              return GestureDetector(
+                onTap: () => _selectSuggestion(s),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.primaryGlow
+                        : AppColors.bgElevated,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: isActive
+                          ? AppColors.primary.withValues(alpha: 0.5)
+                          : AppColors.border,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.place_outlined,
+                          size: 13,
+                          color: isActive
+                              ? AppColors.primary
+                              : AppColors.textSecondary),
+                      const SizedBox(width: 5),
+                      Text(s,
+                          style: AppTextStyles.ui(13,
+                              weight: FontWeight.w600,
+                              color: isActive
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary)),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.place_outlined,
-                        size: 13, color: AppColors.primary),
-                    const SizedBox(width: 5),
-                    Text(s,
-                        style: AppTextStyles.ui(13,
-                            weight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            )).toList(),
+              );
+            }).toList(),
           ),
+
+          const SizedBox(height: 8),
         ],
       ),
     );

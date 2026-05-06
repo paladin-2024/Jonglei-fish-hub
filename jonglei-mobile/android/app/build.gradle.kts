@@ -27,6 +27,11 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    // Suppress Java 8 obsolete source/target warnings from plugin dependencies
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.add("-Xlint:-options")
+    }
+
     signingConfigs {
         create("release") {
             keyAlias = keyProperties["keyAlias"] as String?

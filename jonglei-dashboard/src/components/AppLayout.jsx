@@ -5,14 +5,14 @@ import Sidebar from './Sidebar'
 import { Search, Bell, X, Menu, LayoutDashboard, Users, ShoppingBag, Truck, BarChart3, TrendingUp, Tag, ShieldCheck } from 'lucide-react'
 
 const SEARCH_SHORTCUTS = [
-  { label: 'Overview',      to: '/dashboard',     Icon: LayoutDashboard },
-  { label: 'Users',         to: '/users',          Icon: Users           },
-  { label: 'Listings',      to: '/listings',       Icon: Tag             },
-  { label: 'Orders',        to: '/orders',         Icon: ShoppingBag     },
-  { label: 'Shipments',     to: '/shipments',      Icon: Truck           },
-  { label: 'Clearance',     to: '/clearance',      Icon: ShieldCheck     },
-  { label: 'Market Prices', to: '/market-prices',  Icon: TrendingUp      },
-  { label: 'Analytics',     to: '/analytics',      Icon: BarChart3       },
+  { label: 'Dashboard',    to: '/dashboard',     Icon: LayoutDashboard },
+  { label: 'Users',        to: '/users',          Icon: Users           },
+  { label: 'Listings',     to: '/listings',       Icon: Tag             },
+  { label: 'Orders',       to: '/orders',         Icon: ShoppingBag     },
+  { label: 'Shipments',    to: '/shipments',      Icon: Truck           },
+  { label: 'Clearance',    to: '/clearance',      Icon: ShieldCheck     },
+  { label: 'Market Prices',to: '/market-prices',  Icon: TrendingUp      },
+  { label: 'Analytics',    to: '/analytics',      Icon: BarChart3       },
 ]
 
 function CommandPalette({ open, onClose }) {
@@ -43,25 +43,37 @@ function CommandPalette({ open, onClose }) {
       className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh]"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-stone-900/30 backdrop-blur-[3px]" />
+      <div className="absolute inset-0 backdrop-blur-[4px]" style={{ background: 'rgba(28,25,20,0.45)' }} />
       <div
-        className="relative w-full max-w-[440px] bg-white rounded-2xl shadow-[0_24px_80px_rgba(0,31,26,0.18)] overflow-hidden"
+        className="relative w-full max-w-[460px] rounded-2xl overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.5)]"
+        style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+        }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="h-[3px]" style={{ background: '#005440' }} />
+        {/* Amber accent top */}
+        <div className="h-[2px]" style={{ background: 'linear-gradient(90deg, var(--primary), var(--secondary))' }} />
 
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-stone-100">
-          <Search size={15} className="text-stone-400 flex-shrink-0" />
+        <div
+          className="flex items-center gap-3 px-4 py-3.5"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          <Search size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Jump to page…"
-            className="flex-1 text-[14px] text-stone-800 placeholder-stone-400 outline-none bg-transparent"
+            className="flex-1 text-[14px] outline-none bg-transparent"
+            style={{ color: 'var(--text-primary)', fontFamily: 'Outfit' }}
           />
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 transition-colors"
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
             <X size={13} />
           </button>
@@ -69,29 +81,51 @@ function CommandPalette({ open, onClose }) {
 
         <div className="py-2 max-h-72 overflow-y-auto">
           {results.length === 0 ? (
-            <p className="text-center text-[13px] text-stone-400 py-6">No results</p>
+            <p className="text-center text-[13px] py-6" style={{ color: 'var(--text-muted)' }}>
+              No results
+            </p>
           ) : results.map(({ label, to, Icon }) => (
             <button
               key={to}
               onClick={() => go(to)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-stone-700
-                         hover:bg-teal-50 hover:text-teal-800 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-left transition-all duration-150"
+              style={{ color: 'var(--text-secondary)', transition: 'all 0.15s ease' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(10,181,163,0.08)'
+                e.currentTarget.style.color = 'var(--primary)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'var(--text-secondary)'
+              }}
             >
-              <div className="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
-                <Icon size={13} className="text-stone-500" strokeWidth={1.75} />
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)' }}
+              >
+                <Icon size={13} style={{ color: 'var(--secondary)' }} strokeWidth={1.75} />
               </div>
               {label}
             </button>
           ))}
         </div>
 
-        <div className="px-4 py-2.5 border-t border-stone-100 bg-stone-50/60 flex items-center gap-4 text-[11px] text-stone-400">
+        <div
+          className="px-4 py-2.5 flex items-center gap-4 text-[11px]"
+          style={{ borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}
+        >
           <span>
-            <kbd className="px-1.5 py-0.5 bg-white border border-stone-200 rounded font-mono text-[10px] text-stone-500">↵</kbd>
+            <kbd
+              className="px-1.5 py-0.5 rounded text-[10px]"
+              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)' }}
+            >↵</kbd>
             {' '}select
           </span>
           <span>
-            <kbd className="px-1.5 py-0.5 bg-white border border-stone-200 rounded font-mono text-[10px] text-stone-500">esc</kbd>
+            <kbd
+              className="px-1.5 py-0.5 rounded text-[10px]"
+              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)' }}
+            >esc</kbd>
             {' '}close
           </span>
         </div>
@@ -111,7 +145,7 @@ export default function AppLayout({ children, title, subtitle }) {
       const list = Array.isArray(data) ? data : (data.results ?? [])
       setUnreadCount(list.filter(n => !n.is_read).length)
     } catch {
-      // no-op — keep previous count
+      // no-op
     }
   }, [])
 
@@ -121,13 +155,11 @@ export default function AppLayout({ children, title, subtitle }) {
     return () => clearInterval(id)
   }, [fetchUnread])
 
-  // Desktop: collapsed sidebar state, persisted
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebar_collapsed') === 'true' }
     catch { return false }
   })
 
-  // Mobile: drawer open state
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const toggleCollapsed = () => {
@@ -138,15 +170,12 @@ export default function AppLayout({ children, title, subtitle }) {
     })
   }
 
-  // Close drawer on route change (handled via onClose prop passed to Sidebar)
-  // Close drawer on resize to desktop
   useEffect(() => {
     const onResize = () => { if (window.innerWidth >= 768) setDrawerOpen(false) }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // ⌘K shortcut
   useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -159,75 +188,96 @@ export default function AppLayout({ children, title, subtitle }) {
   }, [])
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="flex min-h-screen" style={{ background: 'var(--bg-base)' }}>
 
-      {/* ── Desktop sidebar (hidden on mobile) ── */}
-      <div className="hidden md:flex flex-shrink-0">
-        <Sidebar
-          collapsed={collapsed}
-          onToggle={toggleCollapsed}
-        />
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex flex-shrink-0" style={{ position: 'sticky', top: 0, height: '100vh' }}>
+        <Sidebar collapsed={collapsed} onToggle={toggleCollapsed} />
       </div>
 
-      {/* ── Mobile drawer overlay ── */}
+      {/* Mobile overlay */}
       {drawerOpen && (
         <div
           className="fixed inset-0 z-40 md:hidden"
           onClick={() => setDrawerOpen(false)}
         >
-          <div className="absolute inset-0 bg-stone-900/50 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 backdrop-blur-[2px]" style={{ background: 'rgba(28,25,20,0.45)' }} />
         </div>
       )}
 
-      {/* ── Mobile drawer panel ── */}
+      {/* Mobile drawer */}
       <div
         className={`fixed inset-y-0 left-0 z-50 md:hidden
                     transition-transform duration-300 ease-in-out
                     ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <Sidebar
-          collapsed={false}
-          mobile
-          onClose={() => setDrawerOpen(false)}
-        />
+        <Sidebar collapsed={false} mobile onClose={() => setDrawerOpen(false)} />
       </div>
 
-      {/* ── Main content ── */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Topbar */}
-        <header className="h-[52px] bg-white border-b border-stone-200/60 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20">
+        <header
+          className="h-[54px] flex items-center justify-between px-4 md:px-6 sticky top-0 z-20 flex-shrink-0"
+          style={{
+            background: 'var(--bg-base)',
+            borderBottom: '1px solid var(--border)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
           <div className="flex items-center gap-3">
-            {/* Hamburger — mobile only */}
+            {/* Hamburger — mobile */}
             <button
-              className="md:hidden w-8 h-8 flex items-center justify-center rounded-xl
-                         hover:bg-stone-100 transition-colors text-stone-500"
+              className="md:hidden w-8 h-8 flex items-center justify-center rounded-xl transition-colors"
+              style={{ color: 'var(--text-muted)' }}
               onClick={() => setDrawerOpen(true)}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               aria-label="Open menu"
             >
               <Menu size={17} strokeWidth={2} />
             </button>
 
-            {/* Search / command palette trigger */}
+            {/* Search trigger */}
             <button
               onClick={() => setCmdOpen(true)}
-              className="hidden sm:flex items-center gap-2 pl-3 pr-4 py-2 text-[13px] bg-stone-50
-                         border border-stone-200 rounded-xl text-stone-400 w-52
-                         hover:border-teal-300 hover:bg-teal-50/40
-                         transition-all duration-200 ease-spring group"
+              className="hidden sm:flex items-center gap-2 pl-3 pr-3 py-2 text-[13px] rounded-xl w-52
+                         transition-all duration-200 group"
+              style={{
+                background: 'var(--bg-glass)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-muted)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(10,181,163,0.3)'
+                e.currentTarget.style.background = 'rgba(10,181,163,0.05)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border)'
+                e.currentTarget.style.background = 'var(--bg-glass)'
+              }}
             >
-              <Search size={13} className="group-hover:text-teal-600 transition-colors flex-shrink-0" />
-              <span className="flex-1 text-left">Search…</span>
-              <span className="font-mono text-[10px] bg-white border border-stone-200 text-stone-400 px-1.5 py-0.5 rounded">
+              <Search size={13} style={{ flexShrink: 0 }} />
+              <span className="flex-1 text-left text-[12px]">Search…</span>
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded"
+                style={{
+                  fontFamily: 'JetBrains Mono',
+                  background: 'var(--bg-base)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-muted)',
+                }}
+              >
                 ⌘K
               </span>
             </button>
 
-            {/* Search icon-only for very small screens */}
+            {/* Icon-only search for small screens */}
             <button
               onClick={() => setCmdOpen(true)}
-              className="sm:hidden w-8 h-8 flex items-center justify-center rounded-xl
-                         hover:bg-stone-100 transition-colors text-stone-500"
+              className="sm:hidden w-8 h-8 flex items-center justify-center rounded-xl transition-colors"
+              style={{ color: 'var(--text-muted)' }}
               aria-label="Search"
             >
               <Search size={15} strokeWidth={1.75} />
@@ -237,14 +287,26 @@ export default function AppLayout({ children, title, subtitle }) {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => navigate('/notifications')}
-              className="relative w-8 h-8 flex items-center justify-center rounded-xl hover:bg-stone-100 transition-colors"
+              className="relative w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-200"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--bg-glass)'
+                e.currentTarget.style.color = 'var(--text-primary)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'var(--text-muted)'
+              }}
               title="Notifications"
             >
-              <Bell size={15} className="text-stone-500" strokeWidth={1.75} />
+              <Bell size={15} strokeWidth={1.75} />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 min-w-[14px] h-[14px] px-0.5
-                                 flex items-center justify-center rounded-full
-                                 bg-amber-500 text-white text-[8px] font-bold">
+                <span
+                  className="absolute top-1 right-1 min-w-[14px] h-[14px] px-0.5
+                             flex items-center justify-center rounded-full
+                             text-[8px] font-bold"
+                  style={{ background: 'var(--primary)', color: 'var(--bg-deep)' }}
+                >
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -256,12 +318,15 @@ export default function AppLayout({ children, title, subtitle }) {
         {(title || subtitle) && (
           <div className="px-4 md:px-7 pt-7 pb-1 animate-fade-up">
             {title && (
-              <h1 className="font-display text-[22px] md:text-[26px] text-stone-900 leading-tight tracking-tight">
+              <h1
+                className="text-[22px] md:text-[28px] leading-tight"
+                style={{ fontFamily: "'DM Serif Display', serif", color: 'var(--text-primary)' }}
+              >
                 {title}
               </h1>
             )}
             {subtitle && (
-              <p className="text-[13px] text-stone-500 mt-1">{subtitle}</p>
+              <p className="text-[13px] mt-1" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>
             )}
           </div>
         )}

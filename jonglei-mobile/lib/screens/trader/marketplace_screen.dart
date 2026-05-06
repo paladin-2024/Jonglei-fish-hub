@@ -3,7 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/rating_stars.dart';
 import '../buyer/order_placement_sheet.dart';
+import 'create_listing_screen.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
@@ -184,10 +186,21 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _load,
-        backgroundColor: AppColors.secondary,
-        child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 28),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFFF59E0B),
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.add_rounded),
+        label: Text('NEW LISTING',
+            style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w800, fontSize: 12)),
+        onPressed: () async {
+          final created = await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const CreateListingScreen()),
+          );
+          if (created == true) _load();
+        },
       ),
     );
   }
@@ -196,8 +209,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 class _Listing {
   final String id;
   final String fish;
-  final double rating;
-  final int trades;
+  final double sellerRating;
+  final int sellerRatingCount;
   final String seller;
   final String location;
   final double quantityKg;
@@ -206,8 +219,8 @@ class _Listing {
   const _Listing({
     required this.id,
     required this.fish,
-    required this.rating,
-    required this.trades,
+    required this.sellerRating,
+    required this.sellerRatingCount,
     required this.seller,
     required this.location,
     required this.quantityKg,
@@ -219,9 +232,9 @@ class _Listing {
     return _Listing(
       id: j['id']?.toString() ?? '',
       fish: j['species']?.toString() ?? '—',
-      rating:
-          double.tryParse(sellerDetail['rating']?.toString() ?? '') ?? 0.0,
-      trades: (sellerDetail['total_transactions'] as int?) ?? 0,
+      sellerRating:
+          double.tryParse(sellerDetail['avg_rating']?.toString() ?? '') ?? 0.0,
+      sellerRatingCount: (sellerDetail['rating_count'] as int?) ?? 0,
       seller: sellerDetail['username']?.toString() ?? '—',
       location: j['location']?.toString() ?? '—',
       quantityKg:
@@ -259,16 +272,10 @@ class _ListingCard extends StatelessWidget {
                       Text(listing.fish,
                           style: AppTextStyles.ui(16, weight: FontWeight.w800)),
                       const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          const Icon(Icons.star_rounded,
-                              size: 13, color: AppColors.secondary),
-                          const SizedBox(width: 3),
-                          Text(
-                              '${listing.rating} (${listing.trades} Trades)',
-                              style: AppTextStyles.ui(12,
-                                  color: AppColors.onSurfaceVariant)),
-                        ],
+                      RatingStars(
+                        rating: listing.sellerRating,
+                        count: listing.sellerRatingCount,
+                        size: 12,
                       ),
                     ],
                   ),

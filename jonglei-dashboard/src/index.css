@@ -6,34 +6,57 @@
 
 @layer base {
   :root {
-    --primary:        #005440;
-    --primary-light:  #0F6E56;
-    --secondary:      #B45309;
-    --secondary-light:#FFDCBB;
-    --canvas:         #F7F4EF;
-    --surface:        #FFFFFF;
-    --surface-high:   #EEE9E3;
-    --on-surface:     #1B1C1A;
-    --on-muted:       #5C6B67;
-    --on-faint:       #97A8A3;
-    --success:        #1A6B3C;
-    --danger:         #B91C1C;
-    --info:           #1E5C8A;
+    /* ── Warm Parchment Light — Jonglei Fish Hub ── */
+    /* Warm linen backgrounds — not cold white */
+    --bg-deep:          #E8E4DC;   /* slightly deeper parchment (sidebar) */
+    --bg-base:          #F0EDE5;   /* main scaffold — warm linen */
+    --bg-elevated:      #FAFAF8;   /* card surface — near-white */
+    --bg-glass:         rgba(0,0,0,0.03);
+    --border:           rgba(0,0,0,0.09);
+
+    /* Deep teal */
+    --primary:          #0AB5A3;
+    --primary-glow:     rgba(10,181,163,0.12);
+
+    /* Burnt orange (matches login screen) */
+    --secondary:        #C4631A;
+    --secondary-glow:   rgba(196,99,26,0.10);
+
+    /* Dark ink text */
+    --text-primary:     #1C1914;
+    --text-secondary:   #4A4238;
+    --text-muted:       #7A7065;
+
+    --success:          #10B981;
+    --danger:           #EF4444;
+    --radius:           14px;
+
+    /* Sidebar — dark charcoal against parchment content */
+    --sidebar-bg:       #1C1914;
+    --sidebar-border:   rgba(255,255,255,0.07);
+    --sidebar-text:     #F0EDE5;
+    --sidebar-muted:    rgba(240,237,229,0.45);
+    --sidebar-active:   rgba(10,181,163,0.15);
+    --sidebar-hover:    rgba(255,255,255,0.06);
+
+    /* Legacy compat */
+    --canvas:           #F0EDE5;
+    --surface:          #FAFAF8;
   }
 
   * { box-sizing: border-box; }
-
   html { scroll-behavior: smooth; }
 
   body {
-    background-color: var(--canvas);
-    color: var(--on-surface);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
     font-family: 'Outfit', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   .font-display { font-family: 'DM Serif Display', serif; }
+  .font-mono    { font-family: 'JetBrains Mono', monospace; }
   .font-data    { font-family: 'JetBrains Mono', monospace; }
 }
 
@@ -51,35 +74,49 @@
     animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
-  /* Shimmer skeleton */
+  /* Shimmer skeleton — warm light variant */
   .shimmer {
     background: linear-gradient(
       90deg,
-      #EEE9E3 0%,
-      #F7F4EF 45%,
-      #EEE9E3 100%
+      #F0EDE5 0%,
+      #E4E0D8 45%,
+      #F0EDE5 100%
     );
     background-size: 400px 100%;
     animation: shimmer 1.6s ease infinite;
   }
 
-  /* Top accent bar — category indicator (NOT side stripe) */
-  .accent-bar-top {
-    position: relative;
-    overflow: hidden;
-  }
-  .accent-bar-top::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    border-radius: 12px 12px 0 0;
-    background: currentColor;
-  }
-
   /* Slide-in from right panel */
   .slide-in-right {
     animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-slide-left {
+    animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Card base */
+  .card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Primary (teal) glow hover */
+  .hover-glow:hover {
+    box-shadow: 0 0 0 1px var(--primary-glow), 0 8px 32px rgba(10,181,163,0.07);
+  }
+
+  /* Teal glow box */
+  .teal-glow-box {
+    background: var(--primary-glow);
+    box-shadow: 0 0 16px rgba(10,181,163,0.18);
+  }
+
+  /* Amber glow box */
+  .amber-glow-box {
+    background: var(--secondary-glow);
+    box-shadow: 0 0 16px rgba(245,158,11,0.18);
   }
 }
 
@@ -97,3 +134,9 @@
   from { opacity: 0; transform: translateX(32px); }
   to   { opacity: 1; transform: translateX(0); }
 }
+
+/* Scrollbar warm styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
