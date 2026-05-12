@@ -49,7 +49,7 @@ services:
     rootDir: jonglei-backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    startCommand: celery -A core worker --loglevel=info
+    dockerCommand: celery -A core worker --loglevel=info
     envVars:
       - key: SECRET_KEY
         fromService:
@@ -72,6 +72,7 @@ services:
     name: jonglei-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
 
 databases:
   - name: jonglei-db
