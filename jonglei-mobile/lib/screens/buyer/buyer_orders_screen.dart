@@ -4,6 +4,8 @@ import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/dispute_sheet.dart';
 import '../../widgets/rating_sheet.dart';
+import 'buyer_tracking_screen.dart';
+import 'payment_sheet.dart';
 
 class _Order {
   final String id;
@@ -50,7 +52,7 @@ class BuyerOrdersScreen extends StatefulWidget {
 
 class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
   String _filter = 'ALL';
-  List<_Order> _orders = _sampleOrders;
+  List<_Order> _orders = [];
   bool _loading = true;
 
   static const _filters = ['ALL', 'PENDING', 'CONFIRMED', 'IN TRANSIT', 'CLEARED'];
@@ -64,7 +66,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
   Future<void> _load() async {
     try {
       final api = context.read<AuthProvider>().api;
-      final raw = await api.get('/marketplace/orders/my-orders/') as List;
+      final raw = await api.getList('/marketplace/orders/my-orders/');
       if (raw.isNotEmpty && mounted) {
         setState(() {
           _orders = raw.map((j) {
@@ -184,7 +186,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
               padding: const EdgeInsets.all(14),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (_, i) => _OrderCard(order: _filtered[i]),
+                  (_, i) => _OrderCard(order: _filtered[i], onRefresh: _load),
                   childCount: _filtered.length,
                 ),
               ),
@@ -197,7 +199,8 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
 
 class _OrderCard extends StatelessWidget {
   final _Order order;
-  const _OrderCard({required this.order});
+  final VoidCallback onRefresh;
+  const _OrderCard({required this.order, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -278,10 +281,64 @@ class _OrderCard extends StatelessWidget {
                         color: AppColors.onSurfaceFaint)),
 
                 // Action buttons
-                if (order.status == 'CONFIRMED' || order.status == 'IN_TRANSIT') ...[
+                if (order.status == 'PENDING') ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final paid = await showPaymentSheet(
+                          context,
+                          orderId: order.id,
+                          amount: order.total,
+                          species: order.species,
+                          userPhone: context.read<AuthProvider>().currentUser?.phoneNumber ?? '',
+                        );
+                        if (paid == true && context.mounted) onRefresh();
+                      },
+                      icon: const Icon(Icons.payment_outlined, size: 16),
+                      label: Text('Pay with MTN MoMo',
+                          style: AppTextStyles.ui(13, weight: FontWeight.w700, color: const Color(0xFF1A1200))),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFCC00),
+                        foregroundColor: const Color(0xFF1A1200),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md)),
+                      ),
+                    ),
+                  ),
+                ] else if (order.status == 'CONFIRMED' || order.status == 'IN_TRANSIT') ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BuyerTrackingScreen(
+                                orderId: order.id,
+                                species: order.species,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.location_on_outlined, size: 14),
+                          label: Text('Track',
+                              style: AppTextStyles.ui(12,
+                                  weight: FontWeight.w600)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: BorderSide(
+                                color: AppColors.primary.withValues(alpha: 0.4)),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppRadius.md)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => showDisputeSheet(

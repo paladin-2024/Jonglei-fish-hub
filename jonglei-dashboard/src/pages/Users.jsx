@@ -45,9 +45,29 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)}d ago`
 }
 
-function UserDetailPanel({ user, onClose }) {
+function UserDetailPanel({ user, onClose, onRefresh }) {
   if (!user) return null
   const accent = ROLE_ACCENT[user.role] ?? '#005440'
+  const [acting, setActing] = useState(null)
+
+  async function verify() {
+    setActing('verify')
+    try {
+      await api.patch(`/auth/users/${user.id}/`, { is_verified: true })
+      onRefresh(); onClose()
+    } catch { /* ignore */ }
+    finally { setActing(null) }
+  }
+
+  async function suspend() {
+    if (!window.confirm(`Suspend ${user.username || user.phone_number}?`)) return
+    setActing('suspend')
+    try {
+      await api.patch(`/auth/users/${user.id}/`, { is_active: false })
+      onRefresh(); onClose()
+    } catch { /* ignore */ }
+    finally { setActing(null) }
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex">
@@ -135,14 +155,22 @@ function UserDetailPanel({ user, onClose }) {
         {/* Actions */}
         <div className="px-6 py-4 border-t border-stone-100 space-y-2.5">
           {!user.is_verified && (
-            <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold bg-teal-700 text-white hover:bg-teal-800 transition-colors">
+            <button
+              onClick={verify}
+              disabled={!!acting}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold bg-teal-700 text-white hover:bg-teal-800 transition-colors disabled:opacity-60"
+            >
               <UserCheck size={14} />
-              Verify account
+              {acting === 'verify' ? 'Verifying…' : 'Verify account'}
             </button>
           )}
-          <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors">
+          <button
+            onClick={suspend}
+            disabled={!!acting}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors disabled:opacity-60"
+          >
             <UserX size={14} />
-            Suspend account
+            {acting === 'suspend' ? 'Suspending…' : 'Suspend account'}
           </button>
         </div>
       </div>
@@ -158,12 +186,14 @@ export default function Users() {
   const [statusFilter, setStatusFilter] = useState('')
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => {
+  function fetchUsers() {
     api.get('/auth/users/')
       .then(r => setUsers(Array.isArray(r.data) ? r.data : (r.data?.results ?? [])))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { fetchUsers() }, [])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -359,7 +389,7 @@ export default function Users() {
       </div>
 
       {/* User detail slide-out */}
-      {selected && <UserDetailPanel user={selected} onClose={() => setSelected(null)} />}
+      {selected && <UserDetailPanel user={selected} onClose={() => setSelected(null)} onRefresh={fetchUsers} />}
     </AppLayout>
   )
 }

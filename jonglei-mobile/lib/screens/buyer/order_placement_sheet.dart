@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import 'payment_sheet.dart';
 
 class OrderPlacementSheet extends StatefulWidget {
   final String listingId;
@@ -51,7 +52,7 @@ class _OrderPlacementSheetState extends State<OrderPlacementSheet> {
   Future<void> _placeOrder() async {
     setState(() { _submitting = true; _error = ''; });
     try {
-      await context.read<AuthProvider>().api.post(
+      final result = await context.read<AuthProvider>().api.post(
         '/marketplace/orders/',
         {
           'listing':     widget.listingId,
@@ -59,12 +60,23 @@ class _OrderPlacementSheetState extends State<OrderPlacementSheet> {
           'note':        _noteCtrl.text.trim(),
         },
         requiresAuth: true,
-      );
+      ) as Map<String, dynamic>;
+
+      final orderId = result['id']?.toString() ?? '';
       if (!mounted) return;
       setState(() { _success = true; _submitting = false; });
-      // Brief success flash, then close
-      await Future.delayed(const Duration(milliseconds: 900));
-      if (mounted) Navigator.pop(context, true);
+      // Brief success flash, then open payment sheet
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      // Show payment sheet
+      await showPaymentSheet(
+        context,
+        orderId: orderId,
+        amount: _total,
+        species: widget.species,
+        userPhone: context.read<AuthProvider>().currentUser?.phoneNumber ?? '',
+      );
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString().replaceFirst('ApiException', '').replaceFirst(RegExp(r'^\(\d+\):\s*'), '');

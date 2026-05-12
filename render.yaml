@@ -1,0 +1,80 @@
+services:
+  - type: web
+    name: jonglei-api
+    runtime: docker
+    rootDir: jonglei-backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    preDeployCommand: python manage.py migrate --noinput
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://jonglei-dashboard.vercel.app"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jonglei-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: jonglei-redis
+          type: redis
+          property: connectionString
+      - key: AT_USERNAME
+        sync: false
+      - key: AT_API_KEY
+        sync: false
+      - key: FIREBASE_CREDENTIALS_PATH
+        sync: false
+      - key: MOMO_ENVIRONMENT
+        value: sandbox
+      - key: MOMO_SUBSCRIPTION_KEY
+        sync: false
+      - key: MOMO_API_USER_ID
+        sync: false
+      - key: MOMO_API_KEY
+        sync: false
+      - key: FCM_SERVER_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: worker
+    name: jonglei-celery
+    runtime: docker
+    rootDir: jonglei-backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    startCommand: celery -A core worker --loglevel=info
+    envVars:
+      - key: SECRET_KEY
+        fromService:
+          name: jonglei-api
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jonglei-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: jonglei-redis
+          type: redis
+          property: connectionString
+
+  - type: redis
+    name: jonglei-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: jonglei-db
+    plan: free
+    databaseName: jonglei_fish_hub
+    user: jonglei_admin

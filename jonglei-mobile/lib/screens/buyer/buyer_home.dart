@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../shared/fish_encyclopedia_screen.dart';
-import '../shared/market_map_screen.dart';
+import '../shared/inbox_screen.dart';
 import '../shared/notification_screen.dart';
 import '../shared/profile_screen.dart';
 import 'browse_listings_screen.dart';
@@ -26,7 +26,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
       const _BuyerDashboard(),
       const BrowseListingsScreen(),
       const BuyerOrdersScreen(),
-      const MarketMapScreen(),
+      const InboxScreen(),
       const ProfileScreen(),
     ];
 
@@ -51,9 +51,9 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
               selectedIcon: Icon(Icons.receipt_long_rounded),
               label: 'ORDERS'),
           NavigationDestination(
-              icon: Icon(Icons.map_outlined),
-              selectedIcon: Icon(Icons.map_rounded),
-              label: 'MARKETS'),
+              icon: Icon(Icons.forum_outlined),
+              selectedIcon: Icon(Icons.forum_rounded),
+              label: 'MESSAGES'),
           NavigationDestination(
               icon: Icon(Icons.person_outline_rounded),
               selectedIcon: Icon(Icons.person_rounded),

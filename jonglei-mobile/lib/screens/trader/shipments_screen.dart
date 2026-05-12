@@ -49,28 +49,30 @@ class _TraderShipmentsScreenState extends State<TraderShipmentsScreen> {
         });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _shipments = List<_Shipment>.from(_staticShipments);
-          _loading = false;
-        });
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   List<_Shipment> _parseShipments(List<dynamic> data) {
     return data.map((item) {
-      final status = ((item['status'] as String? ?? 'PENDING')).toUpperCase();
+      // Normalize status: backend uses IN_TRANSIT, UI uses IN TRANSIT
+      final rawStatus = (item['status'] as String? ?? 'PENDING').toUpperCase();
+      final status = rawStatus.replaceAll('_', ' ');
+      final transporter = (item['transporter_detail'] as Map?)?['username']
+          as String? ?? item['carrier_name'] as String? ?? '—';
+      final species = item['order_species'] as String? ?? '—';
+      final qty = item['order_quantity_kg']?.toString() ?? '';
+      final quantity = qty.isNotEmpty ? '$qty KG' : '—';
       return _Shipment(
         item['id']?.toString() ?? '',
-        item['fish_species'] as String? ?? item['fish'] as String? ?? '',
-        item['quantity'] as String? ?? '',
-        item['origin'] as String? ?? '',
-        item['destination'] as String? ?? '',
+        species,
+        quantity,
+        item['origin'] as String? ?? '—',
+        item['destination'] as String? ?? '—',
         status,
         (item['progress'] as num? ?? 0.0).toDouble(),
-        item['date'] as String? ?? item['departure_date'] as String? ?? '',
-        item['party'] as String? ?? item['transporter'] as String? ?? '',
+        item['estimated_date'] as String? ?? '',
+        transporter,
       );
     }).toList();
   }

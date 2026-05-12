@@ -1,0 +1,32 @@
+{
+  "project_info": {
+    "project_number": "492539038735",
+    "project_id": "fir-project-a291a",
+    "storage_bucket": "fir-project-a291a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:492539038735:android:0c99dd2be8615385bc277a",
+        "android_client_info": {
+          "package_name": "com.jonglei.jonglei_fish_hub",
+          "certificate_hash": [
+            "746c95d6a3b46a55a2ad50f5f0fa58c63da35ab9"
+          ]
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpCn0yjpDwkOsfG0h8pZ1lmeYu-Y3jES8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

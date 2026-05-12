@@ -117,10 +117,21 @@ function StarRating({ value, count }) {
   )
 }
 
-function DetailPanel({ listing, onClose }) {
+function DetailPanel({ listing, onClose, onRefresh }) {
   if (!listing) return null
   const s = STATUS_STYLES[listing.status] ?? STATUS_STYLES.DRAFT
   const totalValue = listing.qty * listing.price
+  const [acting, setActing] = useState(null)
+
+  async function doAction(action) {
+    setActing(action)
+    try {
+      await api.post(`/marketplace/listings/${listing.id}/${action}/`)
+      onRefresh()
+      onClose()
+    } catch { /* silently ignore */ }
+    finally { setActing(null) }
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end" onClick={onClose}>
@@ -239,27 +250,23 @@ function DetailPanel({ listing, onClose }) {
           <div className="space-y-2 pt-1">
             {listing.status === 'DRAFT' && (
               <button
-                className="w-full py-3 text-[12px] font-bold rounded-xl transition-all duration-200"
+                onClick={() => doAction('publish')}
+                disabled={!!acting}
+                className="w-full py-3 text-[12px] font-bold rounded-xl transition-all duration-200 disabled:opacity-60"
                 style={{ background: 'var(--primary)', color: 'var(--bg-deep)' }}
               >
-                Publish Listing
-              </button>
-            )}
-            {listing.status === 'ACTIVE' && (
-              <button
-                className="w-full py-3 text-[12px] font-bold rounded-xl transition-all duration-200"
-                style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--secondary)', border: '1px solid rgba(245,158,11,0.3)' }}
-              >
-                Feature Listing
+                {acting === 'publish' ? 'Publishing…' : 'Publish Listing'}
               </button>
             )}
             {listing.status !== 'REMOVED' && (
               <button
-                className="w-full flex items-center justify-center gap-2 py-3 text-[12px] font-bold rounded-xl transition-all duration-200"
+                onClick={() => doAction('remove')}
+                disabled={!!acting}
+                className="w-full flex items-center justify-center gap-2 py-3 text-[12px] font-bold rounded-xl transition-all duration-200 disabled:opacity-60"
                 style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}
               >
                 <Trash2 size={13} />
-                Remove Listing
+                {acting === 'remove' ? 'Removing…' : 'Remove Listing'}
               </button>
             )}
           </div>
@@ -279,7 +286,7 @@ export default function Listings() {
   const [sortDir, setSortDir]           = useState('desc')
   const [selected, setSelected]         = useState(null)
 
-  useEffect(() => {
+  function fetchListings() {
     api.get('/marketplace/listings/')
       .then(r => {
         const raw = Array.isArray(r.data) ? r.data : (r.data?.results ?? [])
@@ -290,7 +297,19 @@ export default function Listings() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { fetchListings() }, [])
+
+  function exportCSV() {
+    const cols = ['ID', 'Species', 'Seller', 'Qty (kg)', 'Price (SSP)', 'Unit', 'Location', 'Status', 'Date']
+    const rows = filtered.map(l => [l.id, l.fish, l.seller, l.qty, l.price, l.unit ?? 'KG', l.location, l.status, l.date])
+    const csv = [cols, ...rows].map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.download = `listings-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -594,6 +613,7 @@ export default function Listings() {
                 Showing {filtered.length} listings {liveData ? '· live data' : ''}
               </span>
               <button
+                onClick={exportCSV}
                 className="text-[11px] font-semibold flex items-center gap-1 transition-colors"
                 style={{ color: 'var(--primary)' }}
               >
@@ -605,7 +625,7 @@ export default function Listings() {
 
       </div>
 
-      <DetailPanel listing={selected} onClose={() => setSelected(null)} />
+      <DetailPanel listing={selected} onClose={() => setSelected(null)} onRefresh={fetchListings} />
     </AppLayout>
   )
 }

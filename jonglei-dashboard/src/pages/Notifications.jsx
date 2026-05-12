@@ -123,7 +123,7 @@ export default function NotificationCenter() {
 
   const loadHistory = useCallback(async () => {
     try {
-      const { data } = await api.get('/notifications/broadcast/history/')
+      const { data } = await api.get('/notifications/sent/')
       const list = Array.isArray(data) ? data : (data.results ?? [])
       if (list.length > 0) setHistory(list)
     } catch { /* keep sample */ }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
@@ -11,6 +12,20 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
 
   AuthProvider(this._authService);
+
+  Future<void> _registerFcmToken() async {
+    try {
+      final storage = StorageService();
+      final token = await storage.getString('fcm_token');
+      if (token != null && token.isNotEmpty) {
+        await _authService.api.post(
+          '/auth/fcm-token/',
+          {'fcm_token': token},
+          requiresAuth: true,
+        );
+      }
+    } catch (_) {}
+  }
 
   User? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
@@ -32,6 +47,7 @@ class AuthProvider extends ChangeNotifier {
         phoneNumber: phoneNumber,
         password: password,
       );
+      _registerFcmToken();
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;
@@ -60,6 +76,7 @@ class AuthProvider extends ChangeNotifier {
         role: role,
         location: location,
       );
+      _registerFcmToken();
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;

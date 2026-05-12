@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/rating_stars.dart';
+import '../shared/chat_screen.dart';
 import 'order_placement_sheet.dart';
 
 class _Listing {
@@ -13,23 +14,18 @@ class _Listing {
   final double price;
   final String location;
   final String seller;
+  final String sellerId;
   final String status;
   final double sellerRating;
   final int sellerRatingCount;
+  final String photoUrl;
 
   const _Listing(this.id, this.species, this.qty, this.unit, this.price,
-      this.location, this.seller, this.status,
-      {this.sellerRating = 0.0, this.sellerRatingCount = 0});
+      this.location, this.seller, this.sellerId, this.status,
+      {this.sellerRating = 0.0, this.sellerRatingCount = 0, this.photoUrl = ''});
 }
 
-const _sampleListings = [
-  _Listing('LST-0051', 'Nile Perch',         250, 'KG', 2450, 'Bor',       'B. Deng',         'ACTIVE'),
-  _Listing('LST-0050', 'Tilapia (Fresh)',      80, 'KG', 1800, 'Panyagoor', 'Panyagoor Co-op', 'ACTIVE'),
-  _Listing('LST-0047', 'Lungfish',             60, 'KG', 1600, 'Fangak',    'Fangak Hub',      'ACTIVE'),
-  _Listing('LST-0046', 'Tilapia (Smoked)',    120, 'KG', 2100, 'Renk',      'K. Thon',         'ACTIVE'),
-  _Listing('LST-0042', 'Nile Perch (Smoked)',  90, 'KG', 3100, 'Bor',       'B. Deng',         'ACTIVE'),
-  _Listing('LST-0039', 'Catfish',             150, 'KG', 2000, 'Twic East', 'T. East Traders', 'ACTIVE'),
-];
+const _sampleListings = <_Listing>[];
 
 const _speciesColors = {
   'Nile Perch':         Color(0xFF005440),
@@ -51,7 +47,7 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
   String _filter = 'All';
   final _searchCtrl = TextEditingController();
   String _query = '';
-  List<_Listing> _listings = _sampleListings;
+  List<_Listing> _listings = [];
   bool _loading = true;
 
   static const _types = [
@@ -68,7 +64,7 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
   Future<void> _load() async {
     try {
       final api = context.read<AuthProvider>().api;
-      final raw = await api.get('/marketplace/listings/?status=ACTIVE') as List;
+      final raw = await api.getList('/marketplace/listings/?status=ACTIVE');
       if (raw.isNotEmpty && mounted) {
         setState(() {
           _listings = raw.map((j) {
@@ -81,12 +77,14 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
               double.tryParse(j['price_ssp']?.toString() ?? '') ?? 0,
               j['location'] ?? '—',
               sellerDetail['username'] ?? '—',
+              sellerDetail['id']?.toString() ?? '',
               j['status'] ?? 'ACTIVE',
               sellerRating: double.tryParse(
                       sellerDetail['avg_rating']?.toString() ?? '') ??
                   0.0,
               sellerRatingCount:
                   (sellerDetail['rating_count'] as int?) ?? 0,
+              photoUrl: j['photo_url']?.toString() ?? '',
             );
           }).toList();
         });
@@ -109,8 +107,8 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
     return list;
   }
 
-  void _openPlacement(_Listing listing) {
-    showModalBottomSheet(
+  Future<void> _openPlacement(_Listing listing) async {
+    final placed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -124,6 +122,7 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
         location:  listing.location,
       ),
     );
+    if (placed == true) _load();
   }
 
   @override
@@ -305,22 +304,23 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      // Species avatar
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: color.withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            l.species[0],
-                                            style: AppTextStyles.display(
-                                                18, color: color),
-                                          ),
-                                        ),
+                                      // Species photo or avatar
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: l.photoUrl.isNotEmpty
+                                            ? Image.network(
+                                                l.photoUrl,
+                                                width: 44,
+                                                height: 44,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    _SpeciesAvatar(
+                                                        species: l.species,
+                                                        color: color),
+                                              )
+                                            : _SpeciesAvatar(
+                                                species: l.species,
+                                                color: color),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
@@ -371,22 +371,87 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
                                     children: [
                                       _Chip(Icons.scale_outlined,
                                           '${l.qty.toStringAsFixed(0)} ${l.unit}'),
-                                      const SizedBox(width: 12),
+                                      const SizedBox(width: 10),
                                       _Chip(Icons.location_on_outlined,
                                           l.location),
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 7),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.secondary,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () async {
+                                            try {
+                                              final api = context
+                                                  .read<AuthProvider>()
+                                                  .api;
+                                              final thread = await api.post(
+                                                '/messaging/threads/',
+                                                {'listing': l.id},
+                                              ) as Map<String, dynamic>;
+                                              if (context.mounted) {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => ChatScreen(
+                                                      threadId: thread['id']
+                                                              ?.toString() ??
+                                                          '',
+                                                      otherName: l.seller,
+                                                      species: l.species,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (_) {}
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 8),
+                                            decoration: BoxDecoration(
+                                              border: Border.all(
+                                                  color: AppColors.primary
+                                                      .withValues(alpha: 0.4)),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.chat_bubble_outline_rounded,
+                                                    size: 13,
+                                                    color: AppColors.primary),
+                                                const SizedBox(width: 5),
+                                                Text('MESSAGE',
+                                                    style: AppTextStyles.label(
+                                                        10,
+                                                        color: AppColors.primary,
+                                                        weight:
+                                                            FontWeight.w800)),
+                                              ],
+                                            ),
+                                          ),
                                         ),
-                                        child: Text('ORDER',
-                                            style: AppTextStyles.label(10,
-                                                color: Colors.white,
-                                                weight: FontWeight.w800)),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.secondary,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Center(
+                                            child: Text('ORDER',
+                                                style: AppTextStyles.label(10,
+                                                    color: Colors.white,
+                                                    weight: FontWeight.w800)),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -408,6 +473,25 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
       ),
     );
   }
+}
+
+class _SpeciesAvatar extends StatelessWidget {
+  final String species;
+  final Color color;
+  const _SpeciesAvatar({required this.species, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10)),
+        child: Center(
+          child: Text(species.isNotEmpty ? species[0] : '?',
+              style: AppTextStyles.display(18, color: color)),
+        ),
+      );
 }
 
 class _Chip extends StatelessWidget {

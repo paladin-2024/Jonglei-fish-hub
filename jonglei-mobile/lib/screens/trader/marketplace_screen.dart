@@ -33,7 +33,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     setState(() => _loading = true);
     try {
       final api = context.read<AuthProvider>().api;
-      final raw = await api.get('/marketplace/listings/?status=ACTIVE') as List;
+      final raw = await api.getList('/marketplace/listings/?status=ACTIVE');
       if (mounted) {
         setState(() {
           _listings = raw
@@ -215,6 +215,7 @@ class _Listing {
   final String location;
   final double quantityKg;
   final double pricePerKg;
+  final String photoUrl;
 
   const _Listing({
     required this.id,
@@ -225,6 +226,7 @@ class _Listing {
     required this.location,
     required this.quantityKg,
     required this.pricePerKg,
+    this.photoUrl = '',
   });
 
   factory _Listing.fromJson(Map<String, dynamic> j) {
@@ -241,6 +243,7 @@ class _Listing {
           double.tryParse(j['quantity_kg']?.toString() ?? '') ?? 0,
       pricePerKg:
           double.tryParse(j['price_ssp']?.toString() ?? '') ?? 0,
+      photoUrl: j['photo_url']?.toString() ?? '',
     );
   }
 }
@@ -265,6 +268,21 @@ class _ListingCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Photo or letter avatar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: listing.photoUrl.isNotEmpty
+                      ? Image.network(
+                          listing.photoUrl,
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _ListingAvatar(fish: listing.fish),
+                        )
+                      : _ListingAvatar(fish: listing.fish),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,6 +373,27 @@ class _ListingCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ListingAvatar extends StatelessWidget {
+  final String fish;
+  const _ListingAvatar({required this.fish});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: AppColors.primaryLight.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(
+            fish.isNotEmpty ? fish[0] : '?',
+            style: AppTextStyles.display(22, color: AppColors.primary),
+          ),
+        ),
+      );
 }
 
 class _FilterChip extends StatelessWidget {

@@ -9,9 +9,9 @@ import '../../widgets/shimmer_box.dart';
 import '../shared/profile_screen.dart';
 import '../shared/notification_screen.dart';
 import '../shared/fish_encyclopedia_screen.dart';
+import '../shared/inbox_screen.dart';
 import 'create_listing_screen.dart';
 import 'marketplace_screen.dart';
-import 'prices_screen.dart';
 import 'shipments_screen.dart';
 
 class TraderHomeScreen extends StatefulWidget {
@@ -23,14 +23,15 @@ class TraderHomeScreen extends StatefulWidget {
 
 class _TraderHomeScreenState extends State<TraderHomeScreen> {
   int _tab = 0;
+  final _dashKey = GlobalKey<_TraderDashboardState>();
 
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      const _TraderDashboard(),
+      _TraderDashboard(key: _dashKey),
       const MarketplaceScreen(),
       const TraderShipmentsScreen(),
-      const PricesScreen(),
+      const InboxScreen(),
       const ProfileScreen(),
     ];
 
@@ -40,7 +41,10 @@ class _TraderHomeScreenState extends State<TraderHomeScreen> {
       bottomNavigationBar: NavigationBar(
         backgroundColor: AppColors.bgDeep,
         selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        onDestinationSelected: (i) {
+          if (i == 0 && _tab != 0) _dashKey.currentState?.refresh();
+          setState(() => _tab = i);
+        },
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.home_outlined),
@@ -55,9 +59,9 @@ class _TraderHomeScreenState extends State<TraderHomeScreen> {
               selectedIcon: Icon(Icons.local_shipping_rounded),
               label: 'SHIPMENTS'),
           NavigationDestination(
-              icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart_rounded),
-              label: 'PRICES'),
+              icon: Icon(Icons.forum_outlined),
+              selectedIcon: Icon(Icons.forum_rounded),
+              label: 'MESSAGES'),
           NavigationDestination(
               icon: Icon(Icons.person_outline_rounded),
               selectedIcon: Icon(Icons.person_rounded),
@@ -95,7 +99,7 @@ class _DashboardStats {
 
 // ─── Dashboard tab ────────────────────────────────────────────────────────────
 class _TraderDashboard extends StatefulWidget {
-  const _TraderDashboard();
+  const _TraderDashboard({super.key});
 
   @override
   State<_TraderDashboard> createState() => _TraderDashboardState();
@@ -114,6 +118,17 @@ class _TraderDashboardState extends State<_TraderDashboard> {
   void initState() {
     super.initState();
     _loadCachedStats().then((_) => _fetchStats());
+    _fetchTradeLogs();
+    _fetchPrices();
+  }
+
+  void refresh() {
+    setState(() {
+      _statsLoading = true;
+      _logsLoading  = true;
+      _pricesLoading = true;
+    });
+    _fetchStats();
     _fetchTradeLogs();
     _fetchPrices();
   }
@@ -165,10 +180,12 @@ class _TraderDashboardState extends State<_TraderDashboard> {
       final data = await api.get('/marketplace/orders/');
       final list = data is List ? data : (data['results'] as List? ?? []);
       final logs = list.take(3).map<_TradeLog>((item) {
+        final listing = (item['listing_detail'] as Map?) ?? {};
+        final buyer   = (item['buyer_detail']   as Map?) ?? {};
         return _TradeLog(
-          item['fish_species'] as String? ?? item['species'] as String? ?? '',
-          item['quantity'] as String? ?? '',
-          item['party'] as String? ?? item['counterpart'] as String? ?? '',
+          listing['species'] as String? ?? '—',
+          '${item['quantity_kg'] ?? '—'} KG',
+          buyer['username'] as String? ?? '—',
           ((item['status'] as String? ?? 'PENDING')).toUpperCase(),
         );
       }).toList();
@@ -188,12 +205,19 @@ class _TraderDashboardState extends State<_TraderDashboard> {
       final api = context.read<AuthProvider>().api;
       final data = await api.get('/marketplace/prices/');
       final list = data is List ? data : (data['results'] as List? ?? []);
-      final parsed = list.take(6).map<_Price>((item) {
-        final city  = (item['city'] as String? ?? '').toUpperCase();
-        final sp    = item['species'] as String? ?? '';
-        final price = item['price_per_kg'] ?? item['price'] ?? 0;
-        return _Price(city, 'SSP $price', sp);
-      }).toList();
+      // API returns [{city, prices:[{species, price_ssp}]}] — flatten to one price per city
+      final parsed = <_Price>[];
+      for (final cityBlock in list) {
+        final city   = (cityBlock['city'] as String? ?? '').toUpperCase();
+        final prices = cityBlock['prices'] as List? ?? [];
+        if (prices.isNotEmpty) {
+          final first = prices.first as Map;
+          final sp    = first['species'] as String? ?? '';
+          final price = first['price_ssp'] ?? 0;
+          parsed.add(_Price(city, 'SSP $price', sp));
+        }
+        if (parsed.length >= 6) break;
+      }
       if (mounted) {
         setState(() {
           _prices = parsed;

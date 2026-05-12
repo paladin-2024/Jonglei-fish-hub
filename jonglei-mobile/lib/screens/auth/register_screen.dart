@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -106,6 +107,18 @@ class _RegisterScreenState extends State<RegisterScreen>
   String _role     = 'TRADER';
   bool _obscure    = true;
 
+  // OTP verification (between step 0 and step 1)
+  bool _otpSent         = false;
+  bool _otpVerified     = false;
+  bool _sendingOtp      = false;
+  bool _verifyingOtp    = false;
+  String? _otpError;
+  String? _verificationId;
+  final _otpCtrl = TextEditingController();
+  final List<TextEditingController> _otpDigits =
+      List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _otpFocus = List.generate(6, (_) => FocusNode());
+
   // Step 1 — location
   GoogleMapController? _mapCtrl;
   LatLng? _pinned;
@@ -138,17 +151,101 @@ class _RegisterScreenState extends State<RegisterScreen>
     _phoneCtrl.dispose();
     _nameCtrl.dispose();
     _passCtrl.dispose();
+    _otpCtrl.dispose();
+    for (final c in _otpDigits) c.dispose();
+    for (final f in _otpFocus) f.dispose();
     super.dispose();
   }
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
+  // ── OTP ────────────────────────────────────────────────────────────────────
 
-  void _goStep1() {
+  Future<void> _sendOtp() async {
     if (!_step1Key.currentState!.validate()) return;
+    setState(() { _sendingOtp = true; _otpError = null; });
+
+    try {
+      await fb.FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: _phoneCtrl.text.trim(),
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (fb.PhoneAuthCredential cred) async {
+          // Auto-verify on supported devices (Android SMS retrieval)
+          await fb.FirebaseAuth.instance.signInWithCredential(cred);
+          if (mounted) setState(() { _otpVerified = true; _sendingOtp = false; });
+          _proceedToLocation();
+        },
+        verificationFailed: (fb.FirebaseAuthException e) {
+          if (mounted) setState(() {
+            _otpError = e.message ?? 'Verification failed. Check the number.';
+            _sendingOtp = false;
+          });
+        },
+        codeSent: (String vId, int? resendToken) {
+          if (mounted) setState(() {
+            _verificationId = vId;
+            _otpSent = true;
+            _sendingOtp = false;
+          });
+          // Auto-focus first digit
+          Future.delayed(const Duration(milliseconds: 100),
+              () => _otpFocus[0].requestFocus());
+        },
+        codeAutoRetrievalTimeout: (_) {},
+      );
+    } catch (e) {
+      if (mounted) setState(() {
+        _otpError = 'Could not send OTP. Try again.';
+        _sendingOtp = false;
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    final code = _otpDigits.map((c) => c.text).join();
+    if (code.length < 6) {
+      setState(() => _otpError = 'Enter all 6 digits.');
+      return;
+    }
+    setState(() { _verifyingOtp = true; _otpError = null; });
+    try {
+      final cred = fb.PhoneAuthProvider.credential(
+          verificationId: _verificationId!, smsCode: code);
+      await fb.FirebaseAuth.instance.signInWithCredential(cred);
+      if (mounted) setState(() { _otpVerified = true; _verifyingOtp = false; });
+      _proceedToLocation();
+    } on fb.FirebaseAuthException catch (e) {
+      if (mounted) setState(() {
+        _otpError = e.code == 'invalid-verification-code'
+            ? 'Wrong code. Try again.'
+            : e.message ?? 'Verification failed.';
+        _verifyingOtp = false;
+      });
+    }
+  }
+
+  void _proceedToLocation() {
     _headingAnim.reverse().then((_) {
       setState(() => _step = 1);
       _headingAnim.forward();
     });
+  }
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+
+  bool get _firebaseReady {
+    try {
+      fb.FirebaseAuth.instance.app;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _goStep1() {
+    if (!_step1Key.currentState!.validate()) return;
+    // Skip OTP if Firebase not configured (google-services.json missing)
+    if (!_firebaseReady) { _proceedToLocation(); return; }
+    if (_otpVerified) { _proceedToLocation(); return; }
+    _sendOtp();
   }
 
   void _goStep0() {
@@ -404,9 +501,11 @@ class _RegisterScreenState extends State<RegisterScreen>
               decoration: _dec(
                   hint: '+211 9XX XXX XXX',
                   icon: Icons.phone_android_rounded),
-              validator: (v) => v != null && v.startsWith('+211')
-                  ? null
-                  : 'Enter a valid +211 number',
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Phone number is required';
+                if (v.startsWith('+211') || v.startsWith('+256')) return null;
+                return 'Enter a +211 (South Sudan) or +256 number';
+              },
             ),
 
             const SizedBox(height: 16),
@@ -491,28 +590,155 @@ class _RegisterScreenState extends State<RegisterScreen>
 
             const SizedBox(height: 28),
 
-            // Continue CTA
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton.icon(
-                onPressed: _goStep1,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _brand,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+            // ── OTP section (shown after code is sent) ──────────────────────
+            if (_otpSent && !_otpVerified) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _card,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _border),
                 ),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: Text('CONTINUE',
-                    style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
-                        color: Colors.white)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.sms_rounded, size: 16, color: _green),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Code sent to ${_phoneCtrl.text.trim()}',
+                          style: GoogleFonts.outfit(
+                              fontSize: 13, fontWeight: FontWeight.w600,
+                              color: _ink),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _sendingOtp ? null : _sendOtp,
+                        child: Text('Resend',
+                            style: GoogleFonts.outfit(
+                                fontSize: 12, fontWeight: FontWeight.w700,
+                                color: _green)),
+                      ),
+                    ]),
+                    const SizedBox(height: 16),
+                    // 6-digit OTP boxes
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(6, (i) => SizedBox(
+                        width: 44,
+                        height: 52,
+                        child: TextField(
+                          controller: _otpDigits[i],
+                          focusNode: _otpFocus[i],
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          maxLength: 1,
+                          style: GoogleFonts.jetBrainsMono(
+                              fontSize: 20, fontWeight: FontWeight.w700,
+                              color: _ink),
+                          decoration: InputDecoration(
+                            counterText: '',
+                            filled: true,
+                            fillColor: _fill,
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: _border)),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: _border)),
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(
+                                    color: _green, width: 2)),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          onChanged: (v) {
+                            if (v.isNotEmpty && i < 5) {
+                              _otpFocus[i + 1].requestFocus();
+                            } else if (v.isEmpty && i > 0) {
+                              _otpFocus[i - 1].requestFocus();
+                            }
+                            // Auto-submit when last digit filled
+                            if (i == 5 && v.isNotEmpty) _verifyOtp();
+                          },
+                        ),
+                      )),
+                    ),
+                    if (_otpError != null) ...[
+                      const SizedBox(height: 10),
+                      Text(_otpError!,
+                          style: GoogleFonts.outfit(
+                              fontSize: 12, color: const Color(0xFFD94040))),
+                    ],
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: _verifyingOtp ? null : _verifyOtp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _green,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _verifyingOtp
+                      ? const SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : Text('VERIFY & CONTINUE',
+                          style: GoogleFonts.outfit(
+                              fontSize: 14, fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8, color: Colors.white)),
+                ),
+              ),
+            ] else ...[
+              // Error shown before OTP sent
+              if (_otpError != null && !_otpSent) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD94040).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: const Color(0xFFD94040).withValues(alpha: 0.3)),
+                  ),
+                  child: Text(_otpError!,
+                      style: GoogleFonts.outfit(
+                          fontSize: 13, color: const Color(0xFFD94040))),
+                ),
+                const SizedBox(height: 12),
+              ],
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton.icon(
+                  onPressed: _sendingOtp ? null : _goStep1,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _brand,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: _sendingOtp
+                      ? const SizedBox(width: 18, height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.send_to_mobile_rounded, size: 18),
+                  label: Text(
+                    _sendingOtp ? 'SENDING CODE…' : 'SEND VERIFICATION CODE',
+                    style: GoogleFonts.outfit(
+                        fontSize: 14, fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8, color: Colors.white)),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 20),
 

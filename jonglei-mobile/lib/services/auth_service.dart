@@ -25,7 +25,7 @@ class AuthService {
       'role': role,
       'location': location,
       'preferred_language': preferredLanguage,
-    });
+    }, requiresAuth: false);
     return _saveSession(data as Map<String, dynamic>);
   }
 
@@ -36,7 +36,7 @@ class AuthService {
     final data = await _api.post('/auth/login/', {
       'phone_number': phoneNumber,
       'password': password,
-    });
+    }, requiresAuth: false);
     return _saveSession(data as Map<String, dynamic>);
   }
 

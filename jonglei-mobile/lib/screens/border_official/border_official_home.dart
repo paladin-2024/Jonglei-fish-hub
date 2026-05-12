@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../shared/profile_screen.dart';
+import '../shared/shipment_receipt_screen.dart';
 
 // ─── BorderOfficialHomeScreen ─────────────────────────────────────────────────
 class BorderOfficialHomeScreen extends StatefulWidget {
@@ -554,7 +555,7 @@ class _ClearanceQueueTab extends StatefulWidget {
 }
 
 class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
-  List<_Clearance> _clearances = _sampleClearances;
+  List<_Clearance> _clearances = [];
   bool _loading = true;
   String? _actingId;
 
@@ -569,7 +570,7 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
     setState(() => _loading = true);
     try {
       final api = context.read<AuthProvider>().api;
-      final raw = await api.get('/clearance/?status=PENDING') as List;
+      final raw = await api.getList('/clearance/?status=PENDING');
       if (mounted) {
         setState(() {
           _clearances = raw
@@ -589,11 +590,11 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
       final api = context.read<AuthProvider>().api;
       await api.post('/clearance/$clearanceId/$action/', {});
       if (mounted) {
-        final label = action == 'scan_clear' ? 'Cleared' : 'Held';
+        final label = action == 'scan-clear' ? 'Cleared' : 'Held';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Shipment $label successfully'),
-            backgroundColor: action == 'scan_clear'
+            backgroundColor: action == 'scan-clear'
                 ? AppColors.success
                 : AppColors.warning,
             behavior: SnackBarBehavior.floating,
@@ -718,7 +719,7 @@ class _ClearanceQueueTabState extends State<_ClearanceQueueTab> {
                   (_, i) => _ClearanceCard(
                     clearance: _clearances[i],
                     isActing: _actingId == _clearances[i].id,
-                    onClear: () => _act(_clearances[i].id, 'scan_clear'),
+                    onClear: () => _act(_clearances[i].id, 'scan-clear'),
                     onHold: () => _act(_clearances[i].id, 'hold'),
                   ),
                   childCount: _clearances.length,
@@ -1152,8 +1153,8 @@ class _ScanTabState extends State<_ScanTab>
                         Navigator.of(ctx).pop();
                         try {
                           final api = context.read<AuthProvider>().api;
-                          await api.post(
-                              '/clearance/$clearanceId/scan_clear/', {});
+                          final result = await api.post(
+                              '/clearance/$clearanceId/scan-clear/', {});
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -1163,6 +1164,19 @@ class _ScanTabState extends State<_ScanTab>
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
+                            final shipmentId =
+                                (result as Map<String, dynamic>?)?['shipment']
+                                    ?.toString();
+                            if (shipmentId != null && mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ShipmentReceiptScreen(
+                                    shipmentId: shipmentId,
+                                  ),
+                                ),
+                              );
+                            }
                           }
                         } catch (e) {
                           if (mounted) {

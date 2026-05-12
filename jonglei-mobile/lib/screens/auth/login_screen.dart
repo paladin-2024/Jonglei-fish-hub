@@ -82,7 +82,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey   = GlobalKey<FormState>();
-  final _phoneCtrl = TextEditingController(text: '+211');
+  final _phoneCtrl = TextEditingController(text: '+256');
   final _passCtrl  = TextEditingController();
   bool _obscure    = true;
 
@@ -200,12 +200,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: GoogleFonts.outfit(
                                 fontSize: 14, color: _ink),
                             decoration: _dec(
-                                hint: '+211 9XX XXX XXX',
+                                hint: '+256 7XX XXX XXX',
                                 icon: Icons.phone_android_rounded),
                             validator: (v) =>
-                                v != null && v.startsWith('+211')
+                                v != null && v.startsWith('+256')
                                     ? null
-                                    : 'Enter a valid +211 number',
+                                    : 'Enter a valid +256 number',
                           ),
 
                           const SizedBox(height: 20),

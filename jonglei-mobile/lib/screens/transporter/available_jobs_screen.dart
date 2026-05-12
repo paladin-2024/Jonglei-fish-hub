@@ -99,7 +99,7 @@ class AvailableJobsScreen extends StatefulWidget {
 
 class _AvailableJobsScreenState extends State<AvailableJobsScreen> {
   String _filter = 'ALL';
-  List<_Job> _jobs = _sampleJobs;
+  List<_Job> _jobs = [];
   bool _loading = true;
   String? _acceptingId;
 
@@ -116,7 +116,7 @@ class _AvailableJobsScreenState extends State<AvailableJobsScreen> {
     setState(() => _loading = true);
     try {
       final api = context.read<AuthProvider>().api;
-      final raw = await api.get('/transport/jobs/?status=OPEN') as List;
+      final raw = await api.getList('/transport/jobs/');
       if (mounted) {
         setState(() {
           _jobs = raw

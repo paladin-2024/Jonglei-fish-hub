@@ -394,6 +394,15 @@ export default function Orders() {
                 Showing {filtered.length} orders {liveData ? '· live data' : ''}
               </span>
               <button
+                onClick={() => {
+                  const cols = ['ID', 'Species', 'Buyer', 'Seller', 'Qty', 'Price (SSP)', 'Status', 'Date']
+                  const rows = filtered.map(o => [o.id, o.fish, o.buyer, o.seller, o.qty, o.price, o.status, o.date])
+                  const csv = [cols, ...rows].map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n')
+                  const a = document.createElement('a')
+                  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+                  a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
+                  a.click()
+                }}
                 className="text-[11px] font-semibold flex items-center gap-1 transition-colors duration-150"
                 style={{ color: 'var(--primary)' }}
               >

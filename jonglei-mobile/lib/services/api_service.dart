@@ -27,7 +27,7 @@ class ApiService {
   }
 
   Future<dynamic> post(String path, Map<String, dynamic> body,
-      {bool requiresAuth = false}) async {
+      {bool requiresAuth = true}) async {
     final headers = requiresAuth
         ? await _authHeaders()
         : {'Content-Type': 'application/json'};
@@ -55,13 +55,28 @@ class ApiService {
     return _handle(response);
   }
 
-  Future<dynamic> patch(String path, Map<String, dynamic> body) async {
+  /// Like [get] but always returns a flat List, handling both paginated
+  /// (`{"count":N,"results":[...]}`) and plain-list responses.
+  Future<List<dynamic>> getList(String path) async {
+    final data = await get(path);
+    if (data is List) return data;
+    if (data is Map && data.containsKey('results')) {
+      return data['results'] as List<dynamic>;
+    }
+    return [];
+  }
+
+  Future<dynamic> patch(String path, Map<String, dynamic> body,
+      {bool requiresAuth = true}) async {
+    final headers = requiresAuth
+        ? await _authHeaders()
+        : {'Content-Type': 'application/json'};
     final response = await http.patch(
       Uri.parse('${ApiConfig.baseUrl}$path'),
-      headers: await _authHeaders(),
+      headers: headers,
       body: jsonEncode(body),
     );
-    if (response.statusCode == 401) {
+    if (response.statusCode == 401 && requiresAuth) {
       final retried = await _refreshAndRetry('PATCH', path, body);
       if (retried != null) return retried;
     }

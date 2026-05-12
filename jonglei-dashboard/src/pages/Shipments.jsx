@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import AppLayout from '../components/AppLayout'
-import { Truck, MapPin, Search, RefreshCw, ArrowRight, Map } from 'lucide-react'
+import { Truck, MapPin, Search, ArrowRight, Map, X } from 'lucide-react'
 import api from '../api/axios'
 import ShipmentTrackingMap from '../components/ShipmentTrackingMap'
 
@@ -156,7 +156,10 @@ function ShipmentCard({ s, delay = 0 }) {
           <button
             className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all duration-200"
             style={{ background: 'var(--secondary-glow)', color: 'var(--secondary)', border: '1px solid rgba(10,181,163,0.2)' }}
-            onClick={() => {}}
+            onClick={() => {
+              setTrackingId(s.id)
+              setTimeout(() => mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+            }}
           >
             <Map size={11} />
             Track
@@ -173,6 +176,8 @@ export default function Shipments() {
   const [isLive, setIsLive]            = useState(false)
   const [statusFilter, setStatusFilter]= useState('ALL')
   const [search, setSearch]            = useState('')
+  const [trackingId, setTrackingId]    = useState(null)
+  const mapRef                         = useRef(null)
 
   useEffect(() => {
     api.get('/transport/shipments/')
@@ -309,7 +314,7 @@ export default function Shipments() {
         )}
 
         {/* Map section */}
-        <div className="overflow-hidden animate-fade-up stagger-3" style={CARD_S}>
+        <div ref={mapRef} className="overflow-hidden animate-fade-up stagger-3" style={CARD_S}>
           <div
             className="px-5 py-4 flex items-center justify-between"
             style={{ borderBottom: '1px solid var(--border)' }}
@@ -317,21 +322,40 @@ export default function Shipments() {
             <div className="flex items-center gap-2">
               <MapPin size={14} style={{ color: 'var(--text-muted)' }} strokeWidth={1.75} />
               <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                Live Route Tracking
+                {trackingId ? 'Tracking Shipment' : 'Live Route Tracking'}
               </p>
+              {trackingId && (
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--secondary)', fontWeight: 700 }}>
+                  #{trackingId.slice(-6)}
+                </span>
+              )}
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#60A5FA' }} />
-                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#60A5FA' }} />
-              </span>
-              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-muted)' }}>
-                {inTransitCount} in motion
-              </span>
+            <div className="flex items-center gap-2">
+              {trackingId ? (
+                <button
+                  onClick={() => setTrackingId(null)}
+                  className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg transition-all"
+                  style={{ background: 'var(--bg-glass)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                >
+                  <X size={10} /> Clear
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#60A5FA' }} />
+                    <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#60A5FA' }} />
+                  </span>
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-muted)' }}>
+                    {inTransitCount} in motion
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="h-[420px]">
-            <ShipmentTrackingMap shipments={filtered} />
+            <ShipmentTrackingMap
+              shipments={trackingId ? filtered.filter(s => s.id === trackingId) : filtered}
+            />
           </div>
         </div>
 

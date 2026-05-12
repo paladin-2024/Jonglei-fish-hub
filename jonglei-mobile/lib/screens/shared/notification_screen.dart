@@ -22,20 +22,26 @@ class _Notification {
   });
 
   factory _Notification.fromJson(Map<String, dynamic> j) {
+    final title = j['title']?.toString() ?? 'Notification';
+    final body  = j['body']?.toString() ?? '';
+    final combined = '$title $body'.toLowerCase();
+    String type = 'system';
+    if (combined.contains('order') || combined.contains('payment')) {
+      type = 'order';
+    } else if (combined.contains('shipment') || combined.contains('transit') ||
+               combined.contains('delivery') || combined.contains('job')) {
+      type = 'shipment';
+    } else if (combined.contains('clearance') || combined.contains('border') ||
+               combined.contains('cleared') || combined.contains('hold')) {
+      type = 'clearance';
+    }
     return _Notification(
       id: j['id']?.toString() ?? '—',
-      title: j['title']?.toString() ?? j['verb']?.toString() ?? 'Notification',
-      body: j['description']?.toString() ??
-          j['body']?.toString() ??
-          j['data']?.toString() ??
-          '',
-      timestamp: j['timestamp']?.toString() ??
-          j['created_at']?.toString() ??
-          '',
-      type: j['notification_type']?.toString() ??
-          j['type']?.toString() ??
-          'system',
-      isRead: j['unread'] == false || j['is_read'] == true,
+      title: title,
+      body: body,
+      timestamp: j['created_at']?.toString() ?? '',
+      type: type,
+      isRead: j['is_read'] == true,
     );
   }
 }
@@ -84,7 +90,7 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  List<_Notification> _notifications = _sampleNotifications;
+  List<_Notification> _notifications = [];
   bool _loading = true;
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
@@ -100,7 +106,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     setState(() => _loading = true);
     try {
       final api = context.read<AuthProvider>().api;
-      final raw = await api.get('/notifications/') as List;
+      final raw = await api.getList('/notifications/');
       if (mounted && raw.isNotEmpty) {
         setState(() {
           _notifications = raw
