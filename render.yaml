@@ -43,31 +43,6 @@ services:
       - key: SENTRY_DSN
         sync: false
 
-  - type: worker
-    name: jonglei-celery
-    runtime: docker
-    rootDir: jonglei-backend
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: celery -A core worker --loglevel=info
-    envVars:
-      - key: SECRET_KEY
-        fromService:
-          name: jonglei-api
-          type: web
-          envVarKey: SECRET_KEY
-      - key: DEBUG
-        value: "False"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: jonglei-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: jonglei-redis
-          type: redis
-          property: connectionString
-
   - type: redis
     name: jonglei-redis
     plan: free
