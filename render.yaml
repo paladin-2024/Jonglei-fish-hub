@@ -1,6 +1,7 @@
 services:
   - type: web
     name: jonglei-api
+    plan: free
     runtime: docker
     rootDir: jonglei-backend
     dockerfilePath: ./Dockerfile
