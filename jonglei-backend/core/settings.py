@@ -97,17 +97,18 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-if DEBUG:
+_redis_url = config('REDIS_URL', default='')
+if _redis_url:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': _redis_url,
         }
     }
 else:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': config('REDIS_URL', default='redis://localhost:6379/0'),
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         }
     }
 

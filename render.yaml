@@ -19,11 +19,6 @@ services:
         fromDatabase:
           name: jonglei-db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: jonglei-redis
-          type: redis
-          property: connectionString
       - key: AT_USERNAME
         sync: false
       - key: AT_API_KEY
@@ -42,12 +37,6 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
-
-  - type: redis
-    name: jonglei-redis
-    plan: free
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: []
 
 databases:
   - name: jonglei-db
