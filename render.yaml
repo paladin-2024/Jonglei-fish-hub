@@ -19,10 +19,6 @@ services:
         fromDatabase:
           name: jonglei-db
           property: connectionString
-      - key: AT_USERNAME
-        sync: false
-      - key: AT_API_KEY
-        sync: false
       - key: FIREBASE_CREDENTIALS_PATH
         sync: false
       - key: MOMO_ENVIRONMENT
