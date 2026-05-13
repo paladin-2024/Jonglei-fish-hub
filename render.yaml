@@ -19,7 +19,7 @@ services:
         fromDatabase:
           name: jonglei-db
           property: connectionString
-      - key: FIREBASE_CREDENTIALS_PATH
+      - key: FIREBASE_CREDENTIALS_JSON
         sync: false
       - key: MOMO_ENVIRONMENT
         value: sandbox
@@ -28,8 +28,6 @@ services:
       - key: MOMO_API_USER_ID
         sync: false
       - key: MOMO_API_KEY
-        sync: false
-      - key: FCM_SERVER_KEY
         sync: false
       - key: SENTRY_DSN
         sync: false
