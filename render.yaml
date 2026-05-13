@@ -6,7 +6,6 @@ services:
     rootDir: jonglei-backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    preDeployCommand: python manage.py migrate --noinput
     envVars:
       - key: SECRET_KEY
         generateValue: true
