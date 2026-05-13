@@ -34,4 +34,4 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn core.wsgi:application --config gunicorn.conf.py"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py create_admin && gunicorn core.wsgi:application --config gunicorn.conf.py"]

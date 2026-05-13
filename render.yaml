@@ -19,6 +19,12 @@ services:
         fromDatabase:
           name: jonglei-db
           property: connectionString
+      - key: DJANGO_SUPERUSER_PHONE
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
       - key: FIREBASE_CREDENTIALS_JSON
         sync: false
       - key: MOMO_ENVIRONMENT
