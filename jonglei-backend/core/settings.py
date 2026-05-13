@@ -153,6 +153,10 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv(),
 )
 
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://.*\.vercel\.app$',
+]
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Africa/Juba'
 USE_I18N = True
