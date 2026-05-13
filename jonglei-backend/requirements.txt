@@ -1,0 +1,18 @@
+django==6.0.4
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.1
+psycopg2-binary>=2.9.9
+django-cors-headers==4.3.1
+django-filter>=24.3
+qrcode[pil]==7.4.2
+pillow>=10.4.0
+python-decouple==3.8
+celery[redis]==5.3.6
+redis==5.0.3
+firebase-admin==6.5.0
+africastalking==1.2.8
+# Sprint 6 — Production Hardening
+gunicorn==22.0.0
+sentry-sdk[django]==2.5.1
+whitenoise[brotli]==6.7.0
+dj-database-url==2.2.0

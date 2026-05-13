@@ -1,0 +1,40 @@
+<mxfile host="app.diagrams.net" modified="2026-05-13T00:00:00.000Z" version="21.0.0">
+  <diagram name="DFD Level 0 - Context Diagram">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t1" value="Figure 4.4: Jonglei Fish Hub — DFD Level 0 (Context Diagram)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=16;" vertex="1" parent="1"><mxGeometry x="200" y="10" width="1000" height="40" as="geometry"/></mxCell>
+        <mxCell id="sys" value="Jonglei Fish Hub
+Information System" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;" vertex="1" parent="1"><mxGeometry x="520" y="320" width="280" height="140" as="geometry"/></mxCell>
+        <mxCell id="trader" value="Fish Trader" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="80" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="buyer" value="Buyer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="280" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="transporter" value="Transporter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="480" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="border" value="Border Official" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1120" y="80" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="admin" value="Administrator" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1120" y="280" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="fcm_ext" value="Firebase FCM
+(Push Service)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1120" y="480" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="momo_ext" value="MTN MoMo
+(Payment Gateway)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="520" y="600" width="200" height="60" as="geometry"/></mxCell>
+        <mxCell id="at_ext" value="Africa's Talking
+(SMS / OTP Gateway)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="520" y="80" width="200" height="60" as="geometry"/></mxCell>
+        <mxCell id="f1" value="Fish listing data, prices" style="html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.25;" edge="1" source="trader" target="sys" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f2" value="Order confirmations, notifications" style="html=1;exitX=0;exitY=0.45;entryX=1;entryY=0.45;" edge="1" source="sys" target="trader" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f3" value="Search queries, order requests" style="html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="buyer" target="sys" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f4" value="Listings, order status, receipts" style="html=1;exitX=0;exitY=0.6;entryX=1;entryY=0.6;" edge="1" source="sys" target="buyer" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f5" value="Job acceptance, status updates" style="html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.75;" edge="1" source="transporter" target="sys" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f6" value="Available transport jobs" style="html=1;exitX=0;exitY=0.8;entryX=1;entryY=0.7;" edge="1" source="sys" target="transporter" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f7" value="QR scan data, clearance decisions" style="html=1;exitX=0;exitY=0.3;entryX=1;entryY=0.25;" edge="1" source="border" target="sys" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f8" value="Clearance records, shipment details" style="html=1;exitX=1;exitY=0.45;entryX=0;entryY=0.45;" edge="1" source="sys" target="border" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f9" value="System configurations, broadcast" style="html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="admin" target="sys" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f10" value="Reports, analytics, user data" style="html=1;exitX=1;exitY=0.6;entryX=0;entryY=0.6;" edge="1" source="sys" target="admin" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f11" value="Payment initiation request" style="html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" source="sys" target="momo_ext" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f12" value="Payment status callback" style="html=1;exitX=0.3;exitY=0;entryX=0.3;entryY=1;" edge="1" source="momo_ext" target="sys" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f13" value="OTP send request" style="html=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" source="sys" target="at_ext" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f14" value="SMS delivery confirmation" style="html=1;exitX=0.3;exitY=1;entryX=0.3;entryY=0;" edge="1" source="at_ext" target="sys" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f15" value="Push notification payload" style="html=1;exitX=1;exitY=0.75;entryX=0;entryY=0.5;" edge="1" source="sys" target="fcm_ext" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="f16" value="Delivery acknowledgement" style="html=1;exitX=0;exitY=0.7;entryX=1;entryY=0.7;" edge="1" source="fcm_ext" target="sys" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

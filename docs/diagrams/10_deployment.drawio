@@ -1,0 +1,60 @@
+<mxfile host="app.diagrams.net" modified="2026-05-13T00:00:00.000Z" version="21.0.0">
+  <diagram name="Deployment Diagram">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t1" value="Figure 4.10: Jonglei Fish Hub — Deployment Diagram" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=16;" vertex="1" parent="1"><mxGeometry x="200" y="10" width="1100" height="40" as="geometry"/></mxCell>
+        <mxCell id="dev_phone" value="Android / iOS
+Device" style="shape=mxgraph.network.mobile;html=1;pointerEvents=1;dashed=0;fillColor=#e1d5e7;strokeColor=#9673a6;sketch=0;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="60" y="100" width="120" height="100" as="geometry"/></mxCell>
+        <mxCell id="comp_flutter" value="Flutter App v1.0
+(Dart Runtime)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="60" y="215" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="dev_browser" value="Laptop / PC
+(Web Browser)" style="shape=mxgraph.network.laptop;html=1;pointerEvents=1;dashed=0;fillColor=#e1d5e7;strokeColor=#9673a6;sketch=0;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="60" y="340" width="120" height="100" as="geometry"/></mxCell>
+        <mxCell id="comp_react" value="React + Vite App
+(JavaScript)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="60" y="455" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="vercel_cloud" value="Vercel CDN
+(Edge Network)" style="shape=mxgraph.network.cloud;html=1;pointerEvents=1;dashed=0;fillColor=#d5e8d4;strokeColor=#82b366;sketch=0;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="320" y="60" width="180" height="110" as="geometry"/></mxCell>
+        <mxCell id="comp_vercel" value="React SPA
+(Static Bundle)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="310" y="180" width="200" height="50" as="geometry"/></mxCell>
+        <mxCell id="render_cloud" value="Render Cloud
+Platform" style="shape=mxgraph.network.cloud;html=1;pointerEvents=1;dashed=0;fillColor=#d5e8d4;strokeColor=#82b366;sketch=0;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="620" y="40" width="700" height="400" as="geometry"/></mxCell>
+        <mxCell id="render_lbl" value="Render — jonglei-api" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="700" y="50" width="500" height="30" as="geometry"/></mxCell>
+        <mxCell id="docker_box" value="Docker Container" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;strokeWidth=2;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="650" y="90" width="300" height="200" as="geometry"/></mxCell>
+        <mxCell id="comp_gunicorn" value="Gunicorn WSGI
+(4 workers)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="660" y="120" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="comp_django" value="Django 5 + DRF
+(REST API, JWT)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="660" y="190" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="comp_whitenoise" value="WhiteNoise
+(Static Files)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="660" y="250" width="260" height="40" as="geometry"/></mxCell>
+        <mxCell id="comp_postgres" value="PostgreSQL 15
+(Render Managed DB)" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="650" y="330" width="280" height="90" as="geometry"/></mxCell>
+        <mxCell id="comp_redis" value="Redis 7
+(Render Cache)" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="980" y="330" width="280" height="90" as="geometry"/></mxCell>
+        <mxCell id="firebase_cloud" value="Google Firebase
+(FCM)" style="shape=mxgraph.network.cloud;html=1;pointerEvents=1;dashed=0;fillColor=#d5e8d4;strokeColor=#82b366;sketch=0;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="620" y="500" width="200" height="120" as="geometry"/></mxCell>
+        <mxCell id="comp_fcm" value="FCM Server
+(Push Notifications)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="615" y="580" width="210" height="50" as="geometry"/></mxCell>
+        <mxCell id="momo_cloud" value="MTN
+(MoMo API)" style="shape=mxgraph.network.cloud;html=1;pointerEvents=1;dashed=0;fillColor=#d5e8d4;strokeColor=#82b366;sketch=0;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="860" y="500" width="200" height="120" as="geometry"/></mxCell>
+        <mxCell id="comp_momo" value="MoMo REST API
+(Payment Gateway)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffe6cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="855" y="580" width="210" height="50" as="geometry"/></mxCell>
+        <mxCell id="at_cloud" value="Africa's Talking
+(SMS Gateway)" style="shape=mxgraph.network.cloud;html=1;pointerEvents=1;dashed=0;fillColor=#d5e8d4;strokeColor=#82b366;sketch=0;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1100" y="500" width="200" height="120" as="geometry"/></mxCell>
+        <mxCell id="comp_at" value="SMS / OTP
+Delivery Service" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="1095" y="580" width="210" height="50" as="geometry"/></mxCell>
+        <mxCell id="c1" value="HTTPS" style="html=1;dashed=0;" edge="1" source="dev_phone" target="vercel_cloud" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c2" value="HTTPS" style="html=1;dashed=0;" edge="1" source="dev_browser" target="vercel_cloud" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c3" value="Serve SPA" style="html=1;" edge="1" source="vercel_cloud" target="comp_react" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c4" value="HTTPS REST" style="html=1;" edge="1" source="dev_phone" target="comp_gunicorn" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c5" value="HTTPS REST" style="html=1;" edge="1" source="comp_react" target="comp_gunicorn" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c6" value="" style="html=1;" edge="1" source="comp_gunicorn" target="comp_django" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c7" value="SQL" style="html=1;" edge="1" source="comp_django" target="comp_postgres" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c8" value="Redis Protocol" style="html=1;" edge="1" source="comp_django" target="comp_redis" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c9" value="FCM HTTP v1" style="html=1;" edge="1" source="comp_django" target="firebase_cloud" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c10" value="REST" style="html=1;" edge="1" source="comp_django" target="momo_cloud" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c11" value="REST" style="html=1;" edge="1" source="comp_django" target="at_cloud" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
